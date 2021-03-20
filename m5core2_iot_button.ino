@@ -108,19 +108,28 @@ void draw(float value)
   //   lcd.fillCircle(lcd.width()>>1, (lcd.height()>>1) + width * 4/10, 5, 0x007FFFU);
 }
 
+uint32_t getDecisionTime(void)
+{
+  if(is_switched_on_center){
+    return CENTER_OFF_TIME;
+  }else{
+    return CENTER_ON_TIME;
+  }
+}
+
 void keepTouchCenterButton(void)
 {
   uint32_t cur_time = millis();
 
   if(cur_time <= invalid_time){
     //Disable INVALID_DURATION after the button state is switched.
-    Serial.printf("invalid center after switched %d %d\n", cur_time, invalid_time);
+    //Serial.printf("invalid center after switched %d %d\n", cur_time, invalid_time);
     return;
   }
 
   //Once the switch is turned on, it will not turn on again until you release it.
   if(is_once_released_after_switch_on){
-    Serial.printf("invalid until once released\n");
+    //Serial.printf("invalid until once released\n");
     return;
   }
 
@@ -129,7 +138,7 @@ void keepTouchCenterButton(void)
     start_time_push_center = cur_time;
     last_operation_time = cur_time;
 
-    Serial.printf("start transition %d\n", cur_time);
+    //Serial.printf("start transition %d\n", cur_time);
     return;
   }
 
@@ -138,22 +147,23 @@ void keepTouchCenterButton(void)
   last_operation_time = cur_time;
 
   //switch on
-  if(keep_time_push_center >= CENTER_ON_TIME){
+  if(keep_time_push_center >= getDecisionTime()){
     keep_time_push_center = 0;
-    is_switched_on_center = true;
+    is_switched_on_center = !is_switched_on_center;
     is_in_transition_center_state = false;
     invalid_time = cur_time + INVALID_DURATION;
     is_once_released_after_switch_on = true;
+    Serial.printf("is_switched_on_center %d\n", is_switched_on_center);
   }
 
 /*
-  if(is_switched_on_center_button){
+  if(is_switched_on_center){
 
   }else{
 
   }
 */
-  Serial.printf("1:%d, %d\n", cur_time, keep_time_push_center);
+  //Serial.printf("1:%d, %d\n", cur_time, keep_time_push_center);
 }
 
 void keepReleaseCenterButton(void)
@@ -220,6 +230,6 @@ void loop(void)
 
   judgeBottomButtons(pos, is_touch_pressed);
   judgeCenterButton(pos, is_touch_pressed);
-  delay(100);
+  delay(10);
 }
 
