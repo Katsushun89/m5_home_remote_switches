@@ -13,7 +13,6 @@ static int button_width;
 
 const int PALETTE_ORANGE = 2;
 
-static bool is_started_anime = false;
 
 void setup(void)
 {
@@ -77,7 +76,16 @@ void setup(void)
 
 }
 
-const int ANIME_TIME = 1000 * 3;
+const uint32_t CENTER_ON_TIME = 1000 * 2;
+const uint32_t CENTER_OFF_TIME = 1000 * 1;
+const uint32_t INVALID_DURATION = 1000 * 1;
+bool is_switched_on_center = false;
+bool is_in_transition_center_state = false;
+bool is_once_released_after_switch_on = false;
+uint32_t last_operation_time = 0;
+uint32_t start_time_push_center = 0;
+uint32_t keep_time_push_center = 0;
+uint32_t invalid_time = 0;
 
 void draw(float value)
 {
@@ -96,20 +104,65 @@ void draw(float value)
   canvas.drawString("AAA", 10, 20);
 
   canvas.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
- // if (value >= 1.5)
- //   lcd.fillCircle(lcd.width()>>1, (lcd.height()>>1) + width * 4/10, 5, 0x007FFFU);
+  // if (value >= 1.5)
+  //   lcd.fillCircle(lcd.width()>>1, (lcd.height()>>1) + width * 4/10, 5, 0x007FFFU);
 }
 
 void keepTouchCenterButton(void)
 {
-  is_started_anime = true;
-  Serial.println("1");
+  uint32_t cur_time = millis();
+
+  if(cur_time <= invalid_time){
+    //Disable INVALID_DURATION after the button state is switched.
+    Serial.printf("invalid center after switched %d %d\n", cur_time, invalid_time);
+    return;
+  }
+
+  //Once the switch is turned on, it will not turn on again until you release it.
+  if(is_once_released_after_switch_on){
+    Serial.printf("invalid until once released\n");
+    return;
+  }
+
+  if(!is_in_transition_center_state){
+    is_in_transition_center_state = true;
+    start_time_push_center = cur_time;
+    last_operation_time = cur_time;
+
+    Serial.printf("start transition %d\n", cur_time);
+    return;
+  }
+
+  int32_t diff = cur_time - last_operation_time;
+  keep_time_push_center += diff;
+  last_operation_time = cur_time;
+
+  //switch on
+  if(keep_time_push_center >= CENTER_ON_TIME){
+    keep_time_push_center = 0;
+    is_switched_on_center = true;
+    is_in_transition_center_state = false;
+    invalid_time = cur_time + INVALID_DURATION;
+    is_once_released_after_switch_on = true;
+  }
+
+/*
+  if(is_switched_on_center_button){
+
+  }else{
+
+  }
+*/
+  Serial.printf("1:%d, %d\n", cur_time, keep_time_push_center);
 }
 
 void keepReleaseCenterButton(void)
 {
-  is_started_anime = false;
-  Serial.println("0");
+  if(is_once_released_after_switch_on) is_once_released_after_switch_on = false;
+
+  if(is_in_transition_center_state){
+    resetTranstionPrams();
+  }
 }
 
 void judgeCenterButton(TouchPoint_t pos, bool is_touch_pressed)
@@ -128,6 +181,16 @@ void judgeCenterButton(TouchPoint_t pos, bool is_touch_pressed)
   return;
 }
 
+void resetTranstionPrams(void)
+{
+  is_in_transition_center_state = false;
+  is_once_released_after_switch_on = false;
+  start_time_push_center = 0;
+  keep_time_push_center = 0;
+  invalid_time = 0;
+  Serial.println("resetTranstionPrams");
+}
+
 void judgeBottomButtons(TouchPoint_t pos, bool is_touch_pressed)
 {
   static bool is_button_pressed = false;
@@ -137,6 +200,7 @@ void judgeBottomButtons(TouchPoint_t pos, bool is_touch_pressed)
     if(pos.y > 240){
       if(pos.x < 120){//btnA
         is_button_pressed = true;
+        resetTranstionPrams();
       }
       else if(pos.x > 240){ //btnC
         is_button_pressed = true;
@@ -156,5 +220,6 @@ void loop(void)
 
   judgeBottomButtons(pos, is_touch_pressed);
   judgeCenterButton(pos, is_touch_pressed);
+  delay(100);
 }
 
