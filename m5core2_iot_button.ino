@@ -88,9 +88,12 @@ void setup(void)
   }
 */
   lcd.startWrite();
-  center_base.fillRect(0, 0, button_width, button_width, 1);
-  center_base.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);
-  center_base.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
+  //center_base.fillRect(0, 0, button_width, button_width, 1);
+  //center_base.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);
+  //center_base.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
+  drawCenterOFF();
+  drawCenterBase();
+  center_button.pushRotateZoom(0, zoom, zoom, transpalette);
   canvas.pushSprite(0, 0);
 }
 
@@ -132,28 +135,37 @@ void drawCenterBase(void)
 {
   int center = button_width >> 1;
   center_base.fillRect(0, 0, button_width, button_width, 1);
-  //center_base.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);
+  center_base.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);
   center_base.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
+}
+
+void drawCenterTransition(void)
+{
+  int center = button_width >> 1;
+  center_button.drawString("TRANS", 10, 20);
+  center_button.fillCircle(center, center, center-1, 1);
+  center_button.drawArc(center, center, center-2, center-22, 180, 0, 4);
 }
 
 void drawCenterON(void)
 {
   Serial.println("drawCenterOn\n");
   int center = button_width >> 1;
-  //center_button.fillScreen(1);
   center_button.drawString("ON ", 10, 20);
-  center_button.fillCircle(center, center, center, 1);
-  center_button.fillArc(center, center, center, center - 20, 180, 0, 4);
+  center_button.fillCircle(center, center, center-1, 1);
+  //center_button.drawArc(center, center, center-2, center-22, 0, 359, 4);
+  center_button.fillArc(center, center, center-2, center-22, 0, 360, 4);
 }
 
 void drawCenterOFF(void)
 {
   Serial.println("drawCenterOff\n");
   int center = button_width >> 1;
-  //center_base.fillScreen(1);
   center_button.drawString("OFF", 10, 20);
-  center_button.fillCircle(center, center, center, 1);
-  center_button.fillArc(center, center, center, center - 20, 90, 0, 3);
+  center_button.fillCircle(center, center, center-1, 1);
+  center_button.drawCircle(center, center, center-2, 3);
+  center_button.drawCircle(center, center, center-22, 3);
+  //center_button.drawArc(center, center, center-2, center-22, -10, 0, 3);
 }
 
 void drawCenter(ButtonStatus &status)
