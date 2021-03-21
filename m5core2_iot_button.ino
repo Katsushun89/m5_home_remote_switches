@@ -3,7 +3,9 @@
 #include "ui_draw.h"
 
 static LGFX lcd;
-static LGFX_Sprite canvas(&lcd);       
+static LGFX_Sprite canvas(&lcd);
+static LGFX_Sprite center_base(&canvas);
+static LGFX_Sprite center_button(&canvas);
 int center_px = 0;
 int center_py = 0;
 static int32_t center_button_width = 239;
@@ -28,17 +30,31 @@ void setup(void)
 
   lcd.setPivot(center_px, center_py);
   canvas.setColorDepth(lgfx::palette_4bit);
+  center_base.setColorDepth(lgfx::palette_4bit);
+  center_button.setColorDepth(lgfx::palette_4bit);
 
   button_width = lcd.width() * 2 / 3;
 
-  bool ret = canvas.createSprite(button_width, button_width);
-  Serial.printf("sprite %d\n", ret);
+  canvas.createSprite(lcd.width(), lcd.height());
+  center_base.createSprite(button_width, button_width);
+  center_button.createSprite(button_width, button_width);
+
+  canvas.fillScreen(transpalette);
+  center_base.fillScreen(transpalette);
+  center_button.fillScreen(transpalette);
 
   canvas.setPaletteColor(1, 0, 0, 15);
   canvas.setPaletteColor(PALETTE_ORANGE, 255, 102, 0);
   //canvas.setPaletteColor(3, 255, 255, 191);
   canvas.setPaletteColor(3, lcd.color888(255, 51, 0));
   canvas.setPaletteColor(4, lcd.color888(255, 81, 0));
+
+  center_base.setPaletteColor(1, 0, 0, 15);
+  center_base.setPaletteColor(3, lcd.color888(255, 51, 0));
+  center_base.setPaletteColor(4, lcd.color888(255, 81, 0));
+
+  center_button.setPaletteColor(3, lcd.color888(255, 51, 0));
+  center_button.setPaletteColor(4, lcd.color888(255, 81, 0));
 
   /*
   base  .createSprite(width, width);
@@ -72,9 +88,10 @@ void setup(void)
   }
 */
   lcd.startWrite();
-
-  draw(100);
-
+  center_base.fillRect(0, 0, button_width, button_width, 1);
+  center_base.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);
+  center_base.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
+  canvas.pushSprite(0, 0);
 }
 
 const uint32_t CENTER_ON_TIME = 1000 * 2;
@@ -88,6 +105,7 @@ uint32_t start_time_push_center = 0;
 uint32_t keep_time_push_center = 0;
 uint32_t invalid_time = 0;
 
+/*
 void draw(float value)
 {
   //base.pushSprite(0, 0);  // 描画用バッファに盤の画像を上書き
@@ -108,23 +126,34 @@ void draw(float value)
   // if (value >= 1.5)
   //   lcd.fillCircle(lcd.width()>>1, (lcd.height()>>1) + width * 4/10, 5, 0x007FFFU);
 }
+*/
+
+void drawCenterBase(void)
+{
+  int center = button_width >> 1;
+  center_base.fillRect(0, 0, button_width, button_width, 1);
+  //center_base.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);
+  center_base.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
+}
 
 void drawCenterON(void)
 {
   Serial.println("drawCenterOn\n");
   int center = button_width >> 1;
-  canvas.fillArc(center, center, center, center - 20, 180, 0, 4);
-  canvas.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);  // 矩形の外周
-  canvas.drawString("ON ", 10, 20);
+  //center_button.fillScreen(1);
+  center_button.drawString("ON ", 10, 20);
+  center_button.fillCircle(center, center, center, 1);
+  center_button.fillArc(center, center, center, center - 20, 180, 0, 4);
 }
 
 void drawCenterOFF(void)
 {
   Serial.println("drawCenterOff\n");
   int center = button_width >> 1;
-  canvas.fillArc(center, center, center, center - 20, 90, 0, 3);
-  canvas.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);  // 矩形の外周
-  canvas.drawString("OFF", 10, 20);
+  //center_base.fillScreen(1);
+  center_button.drawString("OFF", 10, 20);
+  center_button.fillCircle(center, center, center, 1);
+  center_button.fillArc(center, center, center, center - 20, 90, 0, 3);
 }
 
 void drawCenter(ButtonStatus &status)
@@ -138,7 +167,9 @@ void drawCenter(ButtonStatus &status)
       drawCenterOFF();
     }
   }
-  canvas.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
+  drawCenterBase();
+  center_button.pushRotateZoom(0, zoom, zoom, transpalette);
+  canvas.pushSprite(0, 0);
 }
 
 void tryDrawCenter(void)
