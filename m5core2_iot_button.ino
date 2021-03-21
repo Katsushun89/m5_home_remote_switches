@@ -1,6 +1,6 @@
 #include <M5Core2.h>
 #include <LovyanGFX.hpp>
-
+#include "ui_draw.h"
 
 static LGFX lcd;
 static LGFX_Sprite canvas(&lcd);       
@@ -13,6 +13,7 @@ static int button_width;
 
 const int PALETTE_ORANGE = 2;
 
+UIDraw uidraw;
 
 void setup(void)
 {
@@ -91,21 +92,61 @@ void draw(float value)
 {
   //base.pushSprite(0, 0);  // 描画用バッファに盤の画像を上書き
 
-  float angle = 270 + value * 90.0;
-  int center = button_width >> 1;
+  //float angle = 270 + value * 90.0;
+  //int center = button_width >> 1;
   //canvas.fillCircle(center, center, 120, 3);
   //canvas.fillCircle(center, center, 80, 2);
   //canvas.fillCircle(center, center,  40, 1);
   //canvas.fillArc(center, center, center -  0, center - 20, 180, 0, PALETTE_ORANGE);
   //canvas.fillArc(center, center, center - 20, center - 40, 90, 45, 3);
-  canvas.fillArc(center, center, center - 40, center - 60, 90, 0, 4);
-  canvas.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);  // 矩形の外周
+  //canvas.fillArc(center, center, center - 40, center - 60, 90, 0, 4);
+  //canvas.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);  // 矩形の外周
+  //canvas.drawString("ON", 10, 20);
 
-  canvas.drawString("AAA", 10, 20);
-
+  drawCenterOFF();
   canvas.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
   // if (value >= 1.5)
   //   lcd.fillCircle(lcd.width()>>1, (lcd.height()>>1) + width * 4/10, 5, 0x007FFFU);
+}
+
+void drawCenterON(void)
+{
+  Serial.println("drawCenterOn\n");
+  int center = button_width >> 1;
+  canvas.fillArc(center, center, center, center - 20, 180, 0, 4);
+  canvas.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);  // 矩形の外周
+  canvas.drawString("ON ", 10, 20);
+}
+
+void drawCenterOFF(void)
+{
+  Serial.println("drawCenterOff\n");
+  int center = button_width >> 1;
+  canvas.fillArc(center, center, center, center - 20, 90, 0, 3);
+  canvas.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);  // 矩形の外周
+  canvas.drawString("OFF", 10, 20);
+}
+
+void drawCenter(ButtonStatus &status)
+{
+  if(status.is_in_transition){
+
+  }else{
+    if(status.is_switched_on){
+      drawCenterON();
+    }else{
+      drawCenterOFF();
+    }
+  }
+  canvas.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
+}
+
+void tryDrawCenter(void)
+{
+  ButtonStatus status;
+  if(uidraw.popEvent(status)){
+    drawCenter(status);
+  }
 }
 
 uint32_t getDecisionTime(void)
@@ -153,17 +194,24 @@ void keepTouchCenterButton(void)
     is_in_transition_center_state = false;
     invalid_time = cur_time + INVALID_DURATION;
     is_once_released_after_switch_on = true;
+    uidraw.pushEvent(collectButtonStatus());
     Serial.printf("is_switched_on_center %d\n", is_switched_on_center);
+    return;
   }
 
-/*
-  if(is_switched_on_center){
-
-  }else{
-
-  }
-*/
   //Serial.printf("1:%d, %d\n", cur_time, keep_time_push_center);
+  uidraw.pushEvent(collectButtonStatus());
+  return;
+
+}
+
+ButtonStatus collectButtonStatus(void)
+{
+  ButtonStatus status;
+  status.is_switched_on = is_switched_on_center;
+  status.is_in_transition = is_in_transition_center_state;
+  status.keep_push_time = keep_time_push_center;
+  return status;
 }
 
 void keepReleaseCenterButton(void)
@@ -172,6 +220,7 @@ void keepReleaseCenterButton(void)
 
   if(is_in_transition_center_state){
     resetTranstionPrams();
+    uidraw.pushEvent(collectButtonStatus());
   }
 }
 
@@ -230,6 +279,7 @@ void loop(void)
 
   judgeBottomButtons(pos, is_touch_pressed);
   judgeCenterButton(pos, is_touch_pressed);
+  tryDrawCenter();
   delay(10);
 }
 
