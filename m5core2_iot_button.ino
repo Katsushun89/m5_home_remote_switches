@@ -56,41 +56,10 @@ void setup(void)
   center_button.setPaletteColor(3, lcd.color888(255, 51, 0));
   center_button.setPaletteColor(4, lcd.color888(255, 81, 0));
 
-  /*
-  base  .createSprite(width, width);
+  center_button.setTextFont(4);
+  center_button.setTextDatum(lgfx::middle_center);
 
-  base.setFont(&fonts::Orbitron_Light_24);    // フォント種類を変更(盤の文字用)
-//base.setFont(&fonts::Roboto_Thin_24);       // フォント種類を変更(盤の文字用)
-
-  base.setTextDatum(lgfx::middle_center);
-
-  base.fillCircle(halfwidth, halfwidth, halfwidth - 8, 1);
-  base.fillArc(halfwidth, halfwidth, halfwidth - 10, halfwidth - 11, 135,  45, 3);
-  base.fillArc(halfwidth, halfwidth, halfwidth - 20, halfwidth - 23,   2,  43, 2);
-  base.fillArc(halfwidth, halfwidth, halfwidth - 20, halfwidth - 23, 317, 358, 2);
-  base.setTextColor(3);
-
-  for (int i = -5; i <= 25; ++i) {
-    bool flg = 0 == (i % 5);      // ５目盛り毎フラグ
-    if (flg) {
-      // 大きい目盛り描画
-      base.fillArc(halfwidth, halfwidth, halfwidth - 10, halfwidth - 24, 179.8 + i*9, 180.2 + i*9, 3);
-      base.fillArc(halfwidth, halfwidth, halfwidth - 10, halfwidth - 20, 179.4 + i*9, 180.6 + i*9, 3);
-      base.fillArc(halfwidth, halfwidth, halfwidth - 10, halfwidth - 14, 179   + i*9, 181   + i*9, 3);
-      float rad = i * 9 * 0.0174532925;
-      float ty = - sin(rad) * (halfwidth * 10 / 15);
-      float tx = - cos(rad) * (halfwidth * 10 / 17);
-      base.drawFloat((float)i/10, 1, halfwidth + tx, halfwidth + ty); // 数値描画
-    } else {
-      // 小さい目盛り描画
-      base.fillArc(halfwidth, halfwidth, halfwidth - 10, halfwidth - 17, 179.5 + i*9, 180.5 + i*9, 3);
-    }
-  }
-*/
   lcd.startWrite();
-  //center_base.fillRect(0, 0, button_width, button_width, 1);
-  //center_base.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);
-  //center_base.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
   drawCenterOFF();
   drawCenterBase();
   center_button.pushRotateZoom(0, zoom, zoom, transpalette);
@@ -108,41 +77,16 @@ uint32_t start_time_push_center = 0;
 uint32_t keep_time_push_center = 0;
 uint32_t invalid_time = 0;
 
-/*
-void draw(float value)
-{
-  //base.pushSprite(0, 0);  // 描画用バッファに盤の画像を上書き
-
-  //float angle = 270 + value * 90.0;
-  //int center = button_width >> 1;
-  //canvas.fillCircle(center, center, 120, 3);
-  //canvas.fillCircle(center, center, 80, 2);
-  //canvas.fillCircle(center, center,  40, 1);
-  //canvas.fillArc(center, center, center -  0, center - 20, 180, 0, PALETTE_ORANGE);
-  //canvas.fillArc(center, center, center - 20, center - 40, 90, 45, 3);
-  //canvas.fillArc(center, center, center - 40, center - 60, 90, 0, 4);
-  //canvas.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);  // 矩形の外周
-  //canvas.drawString("ON", 10, 20);
-
-  drawCenterOFF();
-  canvas.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
-  // if (value >= 1.5)
-  //   lcd.fillCircle(lcd.width()>>1, (lcd.height()>>1) + width * 4/10, 5, 0x007FFFU);
-}
-*/
-
 void drawCenterBase(void)
 {
   int center = button_width >> 1;
   center_base.fillRect(0, 0, button_width, button_width, 1);
-  center_base.drawRect(0, 0, button_width, button_width, PALETTE_ORANGE);
-  center_base.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
+  center_base.pushRotateZoom(0, zoom, zoom, transpalette);
 }
 
 void drawCenterTransitionOff2On(uint32_t keep_push_time)
 {
   int center = button_width >> 1;
-  center_button.drawString("TRS", 10, 20);
   center_button.fillCircle(center, center, center-1, 1);
 
   uint32_t angle = uint32_t(float(keep_push_time) / float(getDecisionTime()) * 360.);
@@ -156,7 +100,6 @@ void drawCenterTransitionOff2On(uint32_t keep_push_time)
 void drawCenterTransitionOn2Off(uint32_t keep_push_time)
 {
   int center = button_width >> 1;
-  center_button.drawString("TRS", 10, 20);
   center_button.fillCircle(center, center, center-1, 1);
 
   uint32_t r = uint32_t(float(keep_push_time) / float(getDecisionTime()) * 20.);
@@ -167,27 +110,35 @@ void drawCenterTransitionOn2Off(uint32_t keep_push_time)
   center_button.fillArc(center, center, center-2-r, center-22, 0, 360, 4);
 }
 
+void updateButtonStr(bool onOff)
+{
+  int x = center_button.getPivotX() - 40;
+  int y = center_button.getPivotY();
+  center_button.setCursor(x, y);
+  center_button.setTextColor(4);
+  center_button.setTextSize(1.6);
+  center_button.printf("%s", (onOff ? "ON" : "OFF"));
+}
+
 void drawCenterON(void)
 {
   Serial.println("drawCenterOn\n");
   int center = button_width >> 1;
-  center_button.drawString("ON ", 10, 20);
   center_button.fillCircle(center, center, center-1, 1);
   center_button.drawCircle(center, center, center-2, 3);
   center_button.drawCircle(center, center, center-22, 3);
-  //center_button.drawArc(center, center, center-2, center-22, 0, 359, 4);
   center_button.fillArc(center, center, center-2, center-22, 0, 360, 4);
+  updateButtonStr(true);
 }
 
 void drawCenterOFF(void)
 {
   Serial.println("drawCenterOff\n");
   int center = button_width >> 1;
-  center_button.drawString("OFF", 10, 20);
   center_button.fillCircle(center, center, center-1, 1);
   center_button.drawCircle(center, center, center-2, 3);
   center_button.drawCircle(center, center, center-22, 3);
-  //center_button.drawArc(center, center, center-2, center-22, -10, 0, 3);
+  updateButtonStr(false);
 }
 
 void drawCenter(ButtonStatus &status)
