@@ -139,7 +139,7 @@ void drawCenterBase(void)
   center_base.pushRotateZoom(0, zoom, zoom, transpalette);    // 完了した盤をLCDに描画する
 }
 
-void drawCenterTransition(uint32_t keep_push_time)
+void drawCenterTransitionOff2On(uint32_t keep_push_time)
 {
   int center = button_width >> 1;
   center_button.drawString("TRS", 10, 20);
@@ -151,6 +151,20 @@ void drawCenterTransition(uint32_t keep_push_time)
   center_button.drawCircle(center, center, center-2, 3);
   center_button.drawCircle(center, center, center-22, 3);
   center_button.fillArc(center, center, center-2, center-22, 0, angle, 4);
+}
+
+void drawCenterTransitionOn2Off(uint32_t keep_push_time)
+{
+  int center = button_width >> 1;
+  center_button.drawString("TRS", 10, 20);
+  center_button.fillCircle(center, center, center-1, 1);
+
+  uint32_t r = uint32_t(float(keep_push_time) / float(getDecisionTime()) * 20.);
+  if(r > 20) r = 20;
+  Serial.printf("r %d\n", r);
+  center_button.drawCircle(center, center, center-2, 3);
+  center_button.drawCircle(center, center, center-22, 3);
+  center_button.fillArc(center, center, center-2-r, center-22, 0, 360, 4);
 }
 
 void drawCenterON(void)
@@ -179,7 +193,11 @@ void drawCenterOFF(void)
 void drawCenter(ButtonStatus &status)
 {
   if(status.is_in_transition){
-    drawCenterTransition(status.keep_push_time);
+    if(status.is_switched_on){
+      drawCenterTransitionOn2Off(status.keep_push_time);
+    }else{
+      drawCenterTransitionOff2On(status.keep_push_time);
+    }
   }else{
     if(status.is_switched_on){
       drawCenterON();
