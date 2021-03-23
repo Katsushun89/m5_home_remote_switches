@@ -66,7 +66,7 @@ void setup(void)
   canvas.pushSprite(0, 0);
 }
 
-const uint32_t CENTER_ON_TIME = 1000 * 1;
+const uint32_t CENTER_ON_TIME = 1000 * 3;
 const uint32_t CENTER_OFF_TIME = 500;
 const uint32_t INVALID_DURATION = 1000 * 1;
 bool is_switched_on_center = false;
@@ -76,6 +76,10 @@ uint32_t last_operation_time = 0;
 uint32_t start_time_push_center = 0;
 uint32_t keep_time_push_center = 0;
 uint32_t invalid_time = 0;
+
+const uint32_t RING_INSIDE_WIDTH = 15;
+const uint32_t RING_OUTSIDE_WIDTH = 10;
+const uint32_t RING_TOTAL_WIDTH = RING_OUTSIDE_WIDTH+RING_INSIDE_WIDTH;
 
 void drawCenterBase(void)
 {
@@ -87,27 +91,49 @@ void drawCenterBase(void)
 void drawCenterTransitionOff2On(uint32_t keep_push_time)
 {
   int center = button_width >> 1;
-  center_button.fillCircle(center, center, center-1, 1);
+  center_button.fillCircle(center, center, center-1, 1);//clear
+  center_button.drawCircle(center, center, center-2-RING_OUTSIDE_WIDTH, 3);//outside
+  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, 3);//inside
 
-  uint32_t angle = uint32_t(float(keep_push_time) / float(getDecisionTime()) * 360.);
-  if(angle > 360) angle = 360;
-  Serial.printf("angle %d\n", angle);
-  center_button.drawCircle(center, center, center-2, 3);
-  center_button.drawCircle(center, center, center-22, 3);
-  center_button.fillArc(center, center, center-2, center-22, 0, angle, 4);
+  const uint32_t time_point1 = getDecisionTime() * 1 / 3;
+  const uint32_t time_point2 = getDecisionTime() * 2 / 3;
+
+  if(keep_push_time < time_point1){
+    uint32_t r = uint32_t(float(keep_push_time) / float(time_point1) * float(RING_OUTSIDE_WIDTH));
+    if(r > RING_OUTSIDE_WIDTH) r = RING_OUTSIDE_WIDTH;
+    center_button.fillArc(center, center, center-2+r-RING_OUTSIDE_WIDTH, center-2-RING_OUTSIDE_WIDTH, 0, 20, 4);
+    center_button.fillArc(center, center, center-2+r-RING_OUTSIDE_WIDTH, center-2-RING_OUTSIDE_WIDTH, 180, 180+20, 4);
+  }else if(keep_push_time < time_point2 && keep_push_time >= time_point1){
+    uint32_t angle = uint32_t(float(keep_push_time-time_point1) / float(time_point2-time_point1) * 180.);
+    if(angle > 180) angle = 180;
+    center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 0, angle, 4);
+    center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 180, 180+angle, 4);
+  }else if(keep_push_time >= time_point2){
+    const uint8_t DIV = 12;
+    uint32_t angle = uint32_t(float(keep_push_time-time_point2) / float(getDecisionTime()-time_point2) * 360. / float(DIV));
+    if(angle > 360/DIV) angle = 360/DIV;
+    for(int i = 0; i < DIV; i++){
+      center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/DIV*i, 360/DIV*i+angle, 4);
+    }
+    center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 0, 360, 4);
+  }
 }
 
 void drawCenterTransitionOn2Off(uint32_t keep_push_time)
 {
   int center = button_width >> 1;
-  center_button.fillCircle(center, center, center-1, 1);
+  center_button.fillCircle(center, center, center-1, 1);//clear
+  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, 3);//inside
 
-  uint32_t r = uint32_t(float(keep_push_time) / float(getDecisionTime()) * 20.);
-  if(r > 20) r = 20;
-  Serial.printf("r %d\n", r);
-  center_button.drawCircle(center, center, center-2, 3);
-  center_button.drawCircle(center, center, center-22, 3);
-  center_button.fillArc(center, center, center-2-r, center-22, 0, 360, 4);
+  //outside
+  //uint32_t r1 = uint32_t(float(keep_push_time) / float(getDecisionTime()) * float(RING_OUTSIDE_WIDTH));
+  //if(r1 > RING_OUTSIDE_WIDTH) r1 = RING_OUTSIDE_WIDTH;
+  center_button.drawCircle(center, center, center-2-RING_OUTSIDE_WIDTH, 3);//outside
+
+  //fill
+  uint32_t r2 = uint32_t(float(keep_push_time) / float(getDecisionTime()) * float(RING_TOTAL_WIDTH));
+  if(r2 > RING_TOTAL_WIDTH) r2 = RING_TOTAL_WIDTH;
+  center_button.fillArc(center, center, center-2-r2, center-2-RING_TOTAL_WIDTH, 0, 360, 4);
 }
 
 void updateButtonStr(bool onOff)
@@ -126,8 +152,8 @@ void drawCenterON(void)
   int center = button_width >> 1;
   center_button.fillCircle(center, center, center-1, 1);
   center_button.drawCircle(center, center, center-2, 3);
-  center_button.drawCircle(center, center, center-22, 3);
-  center_button.fillArc(center, center, center-2, center-22, 0, 360, 4);
+  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, 3);
+  center_button.fillArc(center, center, center-2, center-2-RING_TOTAL_WIDTH, 0, 360, 4);
   updateButtonStr(true);
 }
 
@@ -136,8 +162,8 @@ void drawCenterOFF(void)
   Serial.println("drawCenterOff\n");
   int center = button_width >> 1;
   center_button.fillCircle(center, center, center-1, 1);
-  center_button.drawCircle(center, center, center-2, 3);
-  center_button.drawCircle(center, center, center-22, 3);
+  center_button.drawCircle(center, center, center-2-RING_OUTSIDE_WIDTH, 3);
+  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, 3);
   updateButtonStr(false);
 }
 
