@@ -80,6 +80,7 @@ uint32_t invalid_time = 0;
 const uint32_t RING_INSIDE_WIDTH = 15;
 const uint32_t RING_OUTSIDE_WIDTH = 10;
 const uint32_t RING_TOTAL_WIDTH = RING_OUTSIDE_WIDTH+RING_INSIDE_WIDTH;
+const uint8_t RING_INSIDE_DIV = 6;
 
 void drawCenterBase(void)
 {
@@ -97,25 +98,30 @@ void drawCenterTransitionOff2On(uint32_t keep_push_time)
 
   const uint32_t time_point1 = getDecisionTime() * 1 / 3;
   const uint32_t time_point2 = getDecisionTime() * 2 / 3;
-
   if(keep_push_time < time_point1){
     uint32_t r = uint32_t(float(keep_push_time) / float(time_point1) * float(RING_OUTSIDE_WIDTH));
     if(r > RING_OUTSIDE_WIDTH) r = RING_OUTSIDE_WIDTH;
     center_button.fillArc(center, center, center-2+r-RING_OUTSIDE_WIDTH, center-2-RING_OUTSIDE_WIDTH, 0, 20, 4);
     center_button.fillArc(center, center, center-2+r-RING_OUTSIDE_WIDTH, center-2-RING_OUTSIDE_WIDTH, 180, 180+20, 4);
+    for(int i = 0; i < RING_INSIDE_DIV; i++){
+      center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, 4);
+    }
   }else if(keep_push_time < time_point2 && keep_push_time >= time_point1){
     uint32_t angle = uint32_t(float(keep_push_time-time_point1) / float(time_point2-time_point1) * 180.);
     if(angle > 180) angle = 180;
     center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 0, angle, 4);
     center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 180, 180+angle, 4);
-  }else if(keep_push_time >= time_point2){
-    const uint8_t DIV = 12;
-    uint32_t angle = uint32_t(float(keep_push_time-time_point2) / float(getDecisionTime()-time_point2) * 360. / float(DIV));
-    if(angle > 360/DIV) angle = 360/DIV;
-    for(int i = 0; i < DIV; i++){
-      center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/DIV*i, 360/DIV*i+angle, 4);
+    for(int i = 0; i < RING_INSIDE_DIV; i++){
+      center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, 4);
     }
+  }else if(keep_push_time >= time_point2){
     center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 0, 360, 4);
+    for(int i = 0; i < RING_INSIDE_DIV; i++){
+      center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, 4);
+    }
+    uint32_t r = uint32_t(float(keep_push_time-time_point2) / float(getDecisionTime()-time_point2) * RING_INSIDE_WIDTH);
+    if(r > RING_INSIDE_WIDTH) r = RING_INSIDE_WIDTH;
+    center_button.fillArc(center, center, center-2+r-RING_TOTAL_WIDTH, center-2-RING_TOTAL_WIDTH, 0, 360, 4);
   }
 }
 
@@ -124,12 +130,13 @@ void drawCenterTransitionOn2Off(uint32_t keep_push_time)
   int center = button_width >> 1;
   center_button.fillCircle(center, center, center-1, 1);//clear
   center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, 3);//inside
-
+  for(int i = 0; i < RING_INSIDE_DIV; i++){
+    center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, 4);
+  }
   //outside
   //uint32_t r1 = uint32_t(float(keep_push_time) / float(getDecisionTime()) * float(RING_OUTSIDE_WIDTH));
   //if(r1 > RING_OUTSIDE_WIDTH) r1 = RING_OUTSIDE_WIDTH;
   center_button.drawCircle(center, center, center-2-RING_OUTSIDE_WIDTH, 3);//outside
-
   //fill
   uint32_t r2 = uint32_t(float(keep_push_time) / float(getDecisionTime()) * float(RING_TOTAL_WIDTH));
   if(r2 > RING_TOTAL_WIDTH) r2 = RING_TOTAL_WIDTH;
@@ -164,6 +171,9 @@ void drawCenterOFF(void)
   center_button.fillCircle(center, center, center-1, 1);
   center_button.drawCircle(center, center, center-2-RING_OUTSIDE_WIDTH, 3);
   center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, 3);
+  for(int i = 0; i < RING_INSIDE_DIV; i++){
+    center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, 4);
+  }
   updateButtonStr(false);
 }
 
