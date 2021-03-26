@@ -85,7 +85,6 @@ const uint8_t RING_INSIDE_DIV = 6;
 
 void drawLRButton(void)
 {
-  int center = button_width >> 1;
   const int inside_x = 30;
   const int outside_x = 5;
   const int top_y = (lcd.height() >> 1) - 20;
@@ -340,6 +339,46 @@ void judgeBottomButtons(TouchPoint_t pos, bool is_touch_pressed)
   }
 }
 
+bool is_pushed_L = false;
+bool is_pushed_R = false;
+
+bool isPushedL(void)
+{
+  bool tmp = is_pushed_L;
+  is_pushed_L = false;
+  return tmp;
+}
+
+bool isPushedR(void)
+{
+  bool tmp = is_pushed_R;
+  is_pushed_R = false;
+  return tmp;
+}
+
+
+void judgeLRButton(TouchPoint_t pos, bool is_touch_pressed)
+{
+  static bool is_button_pressed = false;
+  if(!is_touch_pressed) is_button_pressed = false;
+
+  if(!is_button_pressed){
+    if(pos.y > (lcd.height() >> 1) - 40 &&
+       pos.y < (lcd.height() >> 1) + 40 ){
+      if(pos.x < 50){//L
+        is_button_pressed = true;
+        is_pushed_L = true;
+        Serial.println("push L");
+      }
+      else if(pos.x > lcd.width() - 50){ //R
+        is_button_pressed = true;
+        is_pushed_R = true;
+        Serial.println("push R");
+      }
+    }
+  }
+}
+
 void loop(void)
 {
   TouchPoint_t pos= M5.Touch.getPressPoint();
@@ -348,6 +387,7 @@ void loop(void)
 
   judgeBottomButtons(pos, is_touch_pressed);
   judgeCenterButton(pos, is_touch_pressed);
+  judgeLRButton(pos, is_touch_pressed);
   tryDrawCenter();
   delay(10);
 }
