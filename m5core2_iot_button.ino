@@ -60,14 +60,15 @@ void setup(void)
   center_button.setTextDatum(lgfx::middle_center);
 
   lcd.startWrite();
+  drawLRButton();
   drawCenterOFF();
   drawCenterBase();
   center_button.pushRotateZoom(0, zoom, zoom, transpalette);
   canvas.pushSprite(0, 0);
 }
 
-const uint32_t CENTER_ON_TIME = 1550;
-const uint32_t CENTER_OFF_TIME = 850;
+const uint32_t CENTER_ON_TIME = 1400;
+const uint32_t CENTER_OFF_TIME = 700;
 const uint32_t INVALID_DURATION = 1000 * 1;
 bool is_switched_on_center = false;
 bool is_in_transition_center_state = false;
@@ -81,6 +82,18 @@ const uint32_t RING_INSIDE_WIDTH = 20;
 const uint32_t RING_OUTSIDE_WIDTH = 6;
 const uint32_t RING_TOTAL_WIDTH = RING_OUTSIDE_WIDTH+RING_INSIDE_WIDTH;
 const uint8_t RING_INSIDE_DIV = 6;
+
+void drawLRButton(void)
+{
+  int center = button_width >> 1;
+  const int inside_x = 30;
+  const int outside_x = 5;
+  const int top_y = (lcd.height() >> 1) - 20;
+  const int mdl_y = (lcd.height() >> 1) - 0;
+  const int btm_y = (lcd.height() >> 1) + 20;
+  canvas.fillTriangle(inside_x, top_y, inside_x, btm_y, outside_x, mdl_y, 4);//left
+  canvas.fillTriangle(lcd.width()-inside_x, top_y, lcd.width()-inside_x, btm_y, lcd.width()-outside_x, mdl_y, 4);//right
+}
 
 void drawCenterBase(void)
 {
