@@ -33,7 +33,7 @@ void setup(void)
   center_base.setColorDepth(lgfx::palette_4bit);
   center_button.setColorDepth(lgfx::palette_4bit);
 
-  button_width = lcd.width() * 2 / 3;
+  button_width = lcd.width() * 7 / 10;
 
   canvas.createSprite(lcd.width(), lcd.height());
   center_base.createSprite(button_width, button_width);
@@ -66,8 +66,8 @@ void setup(void)
   canvas.pushSprite(0, 0);
 }
 
-const uint32_t CENTER_ON_TIME = 1000 * 3;
-const uint32_t CENTER_OFF_TIME = 500;
+const uint32_t CENTER_ON_TIME = 1550;
+const uint32_t CENTER_OFF_TIME = 850;
 const uint32_t INVALID_DURATION = 1000 * 1;
 bool is_switched_on_center = false;
 bool is_in_transition_center_state = false;
@@ -77,8 +77,8 @@ uint32_t start_time_push_center = 0;
 uint32_t keep_time_push_center = 0;
 uint32_t invalid_time = 0;
 
-const uint32_t RING_INSIDE_WIDTH = 15;
-const uint32_t RING_OUTSIDE_WIDTH = 10;
+const uint32_t RING_INSIDE_WIDTH = 20;
+const uint32_t RING_OUTSIDE_WIDTH = 6;
 const uint32_t RING_TOTAL_WIDTH = RING_OUTSIDE_WIDTH+RING_INSIDE_WIDTH;
 const uint8_t RING_INSIDE_DIV = 6;
 
