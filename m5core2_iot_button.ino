@@ -1,6 +1,7 @@
 #include <M5Core2.h>
 #include <LovyanGFX.hpp>
 #include "ui_draw.h"
+#include "switches.h"
 
 static LGFX lcd;
 static LGFX_Sprite canvas(&lcd);
@@ -16,6 +17,7 @@ static int button_width;
 const int PALETTE_ORANGE = 2;
 
 UIDraw uidraw;
+Switches switches;
 
 void setup(void)
 {
@@ -67,10 +69,9 @@ void setup(void)
   canvas.pushSprite(0, 0);
 }
 
-const uint32_t CENTER_ON_TIME = 1400;
-const uint32_t CENTER_OFF_TIME = 700;
+const uint32_t CENTER_ON_TIME = 1200;
+const uint32_t CENTER_OFF_TIME = 650;
 const uint32_t INVALID_DURATION = 1000 * 1;
-bool is_switched_on_center = false;
 bool is_in_transition_center_state = false;
 bool is_once_released_after_switch_on = false;
 uint32_t last_operation_time = 0;
@@ -157,12 +158,17 @@ void drawCenterTransitionOn2Off(uint32_t keep_push_time)
 
 void updateButtonStr(bool onOff)
 {
-  int x = center_button.getPivotX() - 40;
+  int x = center_button.getPivotX() - 55;
   int y = center_button.getPivotY();
   center_button.setCursor(x, y);
-  center_button.setTextColor(4);
-  center_button.setTextSize(1.6);
-  center_button.printf("%s", (onOff ? "ON" : "OFF"));
+  if(onOff){
+    center_button.setTextColor(3);
+  }else{
+    center_button.setTextColor(4);
+  }
+  center_button.setTextSize(0.75);
+
+  center_button.printf("%s", switches.getStrCurrentSwitch().c_str());
 }
 
 void drawCenterON(void)
@@ -217,9 +223,16 @@ void tryDrawCenter(void)
   }
 }
 
+void drawLRButtonPushed(void)
+{
+  ButtonStatus status;
+  status.is_switched_on = switches.isSwitchedOnCurrentSwitch();
+  drawCenter(status);
+}
+
 uint32_t getDecisionTime(void)
 {
-  if(is_switched_on_center){
+  if(switches.isSwitchedOnCurrentSwitch()){
     return CENTER_OFF_TIME;
   }else{
     return CENTER_ON_TIME;
@@ -258,12 +271,11 @@ void keepTouchCenterButton(void)
   //switch on
   if(keep_time_push_center >= getDecisionTime()){
     keep_time_push_center = 0;
-    is_switched_on_center = !is_switched_on_center;
+    switches.toggleSwitch();
     is_in_transition_center_state = false;
     invalid_time = cur_time + INVALID_DURATION;
     is_once_released_after_switch_on = true;
     uidraw.pushEvent(collectButtonStatus());
-    Serial.printf("is_switched_on_center %d\n", is_switched_on_center);
     return;
   }
 
@@ -276,7 +288,7 @@ void keepTouchCenterButton(void)
 ButtonStatus collectButtonStatus(void)
 {
   ButtonStatus status;
-  status.is_switched_on = is_switched_on_center;
+  status.is_switched_on = switches.isSwitchedOnCurrentSwitch();
   status.is_in_transition = is_in_transition_center_state;
   status.keep_push_time = keep_time_push_center;
   return status;
@@ -339,24 +351,6 @@ void judgeBottomButtons(TouchPoint_t pos, bool is_touch_pressed)
   }
 }
 
-bool is_pushed_L = false;
-bool is_pushed_R = false;
-
-bool isPushedL(void)
-{
-  bool tmp = is_pushed_L;
-  is_pushed_L = false;
-  return tmp;
-}
-
-bool isPushedR(void)
-{
-  bool tmp = is_pushed_R;
-  is_pushed_R = false;
-  return tmp;
-}
-
-
 void judgeLRButton(TouchPoint_t pos, bool is_touch_pressed)
 {
   static bool is_button_pressed = false;
@@ -367,17 +361,21 @@ void judgeLRButton(TouchPoint_t pos, bool is_touch_pressed)
        pos.y < (lcd.height() >> 1) + 40 ){
       if(pos.x < 50){//L
         is_button_pressed = true;
-        is_pushed_L = true;
         Serial.println("push L");
+        switches.movedown();
+        drawLRButtonPushed();
       }
       else if(pos.x > lcd.width() - 50){ //R
         is_button_pressed = true;
-        is_pushed_R = true;
         Serial.println("push R");
+        switches.moveup();
+        drawLRButtonPushed();
       }
     }
   }
 }
+
+
 
 void loop(void)
 {
