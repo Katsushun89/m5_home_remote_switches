@@ -16,6 +16,17 @@ Switches::Switches()
 
 }
 
+void Switches::updatePowerStatus(std::string path, bool power)
+{
+    /*
+    for(int i = SWITCH_HEAD + 1; i < SWITCH_TAIL; i++){
+        if(path == switch_status[i].firebase_path){
+            switch_status[i].is_switched_on = power;
+        }
+    }
+    */
+}
+
 SwitchStatus Switches::getCurrentSwitchStatus(void)
 {
     return switch_status[cur_switch];
@@ -31,25 +42,34 @@ std::string Switches::getStrCurrentSwitch(void)
     return switch_status[cur_switch].str;
 }
 
-void Switches::switchOn(void)
+std::string Switches::getFirebasePathCurrentSwitch(void)
 {
-    SwitchStatus status = getCurrentSwitchStatus();
-    status.is_switched_on = true;
-    switch_status[cur_switch] = status;
+    return switch_status[cur_switch].firebase_path;
 }
 
-void Switches::switchOff(void)
+std::string Switches::getStrSwitch(uint32_t switch_number)
 {
-    SwitchStatus status = getCurrentSwitchStatus();
-    status.is_switched_on = false;
-    switch_status[cur_switch] = status;
+    return switch_status[switch_number].str;
 }
 
-void Switches::toggleSwitch(void)
+
+void Switches::setFirebasePath(uint32_t switch_number, std::string str)
+{
+    switch_status[switch_number].firebase_path = str;
+}
+
+std::string Switches::getFirebasePath(uint32_t switch_number)
+{
+    return switch_status[switch_number].firebase_path;
+}
+
+bool Switches::toggleSwitch(void)
 {
     SwitchStatus status = getCurrentSwitchStatus();
     status.is_switched_on = !status.is_switched_on;
+
     switch_status[cur_switch] = status;
+    return status.is_switched_on;
 }
 
 void Switches::movedown(void)

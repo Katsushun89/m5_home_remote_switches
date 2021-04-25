@@ -10,7 +10,8 @@ enum SwitchName{
 };
 
 struct SwitchStatus{
-    std::string str; 
+    std::string str;
+    std::string firebase_path;
     bool is_switched_on;
 };
 
@@ -23,12 +24,16 @@ private:
 public:
     Switches();
     ~Switches() = default;
+    void setup(void);
     SwitchStatus getCurrentSwitchStatus(void);
     bool isSwitchedOnCurrentSwitch(void);
     std::string getStrCurrentSwitch(void);
-    void switchOn(void);
-    void switchOff(void);
-    void toggleSwitch(void);
+    std::string getFirebasePathCurrentSwitch(void);
+    std::string getStrSwitch(uint32_t switch_number);
+    void setFirebasePath(uint32_t switch_number, std::string str);
+    std::string getFirebasePath(uint32_t switch_number);
+    bool toggleSwitch(void);
     void movedown(void);
     void moveup(void);
+    void updatePowerStatus(std::string path, bool power);
 };

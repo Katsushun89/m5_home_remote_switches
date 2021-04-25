@@ -1,7 +1,10 @@
 #include <M5Core2.h>
 #include <LovyanGFX.hpp>
+#include <WiFi.h>
+#include <IOXhop_FirebaseESP32.h>
 #include "ui_draw.h"
 #include "switches.h"
+#include "config.h"
 
 static LGFX lcd;
 static LGFX_Sprite canvas(&lcd);
@@ -18,6 +21,58 @@ const int PALETTE_ORANGE = 2;
 
 UIDraw uidraw;
 Switches switches;
+
+void setupWiFi()
+{
+  WiFi.begin(SSID, PASSWD);
+
+  // Wait some time to connect to wifi
+  for(int i = 0; i < 10 && WiFi.status() != WL_CONNECTED; i++) {
+      Serial.print(".");
+      delay(1000);
+  }
+
+  // Check if connected to wifi
+  if(WiFi.status() != WL_CONNECTED) {
+      Serial.println("No Wifi!");
+      return;
+  }
+
+  Serial.println("Connected to Wifi, Connecting to server.");
+}
+
+void setupFirebase(void)
+{
+  Firebase.begin(FIREBASE_DATABASE_URL, FIREBASE_AUTH);
+
+  for(uint32_t i = SWITCH_HEAD + 1; i < 2/*SWITCH_TAIL*/; i++){
+    switches.setFirebasePath(i, "/" + switches.getStrSwitch(i) + "/power");
+    //switch_status[i].firebase_path = switch_status[i].str + "/power";
+    std::string pwr_path = switches.getFirebasePath(i);
+    Firebase.stream(String(pwr_path.c_str()), [](FirebaseStream stream) {
+    //Firebase.stream(String(pwr_path.c_str()), [](FirebaseStream stream) {
+    String eventType = stream.getEvent();
+    eventType.toLowerCase();
+  
+    Serial.print("event: ");
+    Serial.println(eventType);
+    if (eventType == "put") {
+      String path = stream.getPath();
+      bool power = stream.getDataBool();
+      updateFirebasePowerStatus(path, power);
+      Serial.print("power: ");
+      Serial.println(stream.getDataBool());
+    }
+    });
+    //Firebase.setBool("/dev1/power", is_power_on);
+  }
+}
+
+void updateFirebasePowerStatus(String path, bool power)
+{
+  Serial.printf("status:%s\n", path.c_str());
+  switches.updatePowerStatus(std::string(path.c_str()), power);
+}
 
 void setup(void)
 {
@@ -67,6 +122,9 @@ void setup(void)
   drawCenterBase();
   center_button.pushRotateZoom(0, zoom, zoom, transpalette);
   canvas.pushSprite(0, 0);
+
+  setupWiFi();
+  setupFirebase();
 }
 
 const uint32_t CENTER_ON_TIME = 1200;
@@ -271,7 +329,9 @@ void keepTouchCenterButton(void)
   //switch on
   if(keep_time_push_center >= getDecisionTime()){
     keep_time_push_center = 0;
-    switches.toggleSwitch();
+    bool is_switched_on = switches.toggleSwitch();
+    Firebase.setBool(switches.getFirebasePathCurrentSwitch().c_str(), is_switched_on);
+
     is_in_transition_center_state = false;
     invalid_time = cur_time + INVALID_DURATION;
     is_once_released_after_switch_on = true;
