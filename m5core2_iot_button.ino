@@ -1,7 +1,7 @@
 #include <M5Core2.h>
 #include <LovyanGFX.hpp>
 #include <WiFi.h>
-#include <IOXhop_FirebaseESP32.h>
+#include <FirebaseESP32.h>
 #include "ui_draw.h"
 #include "switches.h"
 #include "config.h"
@@ -22,6 +22,14 @@ const int PALETTE_ORANGE = 2;
 UIDraw uidraw;
 Switches switches;
 
+FirebaseData fbdo1;
+FirebaseData fbdo2;
+
+#define CHILD_NUM (2)
+String parentPath = "/switches";
+String childPath[CHILD_NUM] = {"/CRAFTROOM","/3D PRINTER"};
+size_t childPathSize = CHILD_NUM;
+
 void setupWiFi()
 {
   WiFi.begin(SSID, PASSWD);
@@ -41,37 +49,60 @@ void setupWiFi()
   Serial.println("Connected to Wifi, Connecting to server.");
 }
 
+void streamCallback(MultiPathStreamData stream)
+{
+  Serial.println();
+  Serial.println("Stream Data1 available...");
+
+  size_t numChild = sizeof(childPath)/sizeof(childPath[0]);
+
+  for(size_t i = 0;i< numChild;i++){
+    if (stream.get(childPath[i])){
+      Serial.println("path: " + stream.dataPath + ", type: " + stream.type + ", value: " + stream.value);
+      bool power = false;
+      if(stream.value.indexOf("true") >= 0){
+        power = true;
+      }
+      updateFirebasePowerStatus(stream.dataPath, power);
+    }
+  }
+
+  Serial.println();
+}
+
+void streamTimeoutCallback(bool timeout)
+{
+  if (timeout)
+  {
+    Serial.println();
+    Serial.println("Stream timeout, resume streaming...");
+    Serial.println();
+  }
+}
+
 void setupFirebase(void)
 {
   Firebase.begin(FIREBASE_DATABASE_URL, FIREBASE_AUTH);
+  Firebase.reconnectWiFi(true);
 
-  for(uint32_t i = SWITCH_HEAD + 1; i < 2/*SWITCH_TAIL*/; i++){
-    switches.setFirebasePath(i, "/" + switches.getStrSwitch(i) + "/power");
-    //switch_status[i].firebase_path = switch_status[i].str + "/power";
-    std::string pwr_path = switches.getFirebasePath(i);
-    Firebase.stream(String(pwr_path.c_str()), [](FirebaseStream stream) {
-    //Firebase.stream(String(pwr_path.c_str()), [](FirebaseStream stream) {
-    String eventType = stream.getEvent();
-    eventType.toLowerCase();
-  
-    Serial.print("event: ");
-    Serial.println(eventType);
-    if (eventType == "put") {
-      String path = stream.getPath();
-      bool power = stream.getDataBool();
-      updateFirebasePowerStatus(path, power);
-      Serial.print("power: ");
-      Serial.println(stream.getDataBool());
-    }
-    });
-    //Firebase.setBool("/dev1/power", is_power_on);
+  if (!Firebase.beginMultiPathStream(fbdo1, parentPath, childPath, childPathSize))
+  {
+    Serial.println("------------------------------------");
+    Serial.println("Can't begin stream connection...");
+    Serial.println("REASON: " + fbdo1.errorReason());
+    Serial.println("------------------------------------");
+    Serial.println();
   }
+
+  //Set the reserved size of stack memory in bytes for internal stream callback processing RTOS task.
+  //8192 is the minimum size.
+  Firebase.setMultiPathStreamCallback(fbdo1, streamCallback, streamTimeoutCallback, 8192);
 }
 
 void updateFirebasePowerStatus(String path, bool power)
 {
-  Serial.printf("status:%s\n", path.c_str());
-  switches.updatePowerStatus(std::string(path.c_str()), power);
+  switches.updatePowerStatus(path, power);
+  updateDrawingCenter();
 }
 
 void setup(void)
@@ -122,6 +153,9 @@ void setup(void)
   drawCenterBase();
   center_button.pushRotateZoom(0, zoom, zoom, transpalette);
   canvas.pushSprite(0, 0);
+
+  switches.setFirebasePath(STUDIO_LIGHT, childPath[0]);
+  switches.setFirebasePath(PRINTER_3D, childPath[1]);
 
   setupWiFi();
   setupFirebase();
@@ -281,7 +315,7 @@ void tryDrawCenter(void)
   }
 }
 
-void drawLRButtonPushed(void)
+void updateDrawingCenter(void)
 {
   ButtonStatus status;
   status.is_switched_on = switches.isSwitchedOnCurrentSwitch();
@@ -330,7 +364,9 @@ void keepTouchCenterButton(void)
   if(keep_time_push_center >= getDecisionTime()){
     keep_time_push_center = 0;
     bool is_switched_on = switches.toggleSwitch();
-    Firebase.setBool(switches.getFirebasePathCurrentSwitch().c_str(), is_switched_on);
+
+    //sync firebase rtdb
+    //Firebase.setBool(switches.getFirebasePathCurrentSwitch().c_str(), is_switched_on);
 
     is_in_transition_center_state = false;
     invalid_time = cur_time + INVALID_DURATION;
@@ -423,13 +459,13 @@ void judgeLRButton(TouchPoint_t pos, bool is_touch_pressed)
         is_button_pressed = true;
         Serial.println("push L");
         switches.movedown();
-        drawLRButtonPushed();
+        updateDrawingCenter();
       }
       else if(pos.x > lcd.width() - 50){ //R
         is_button_pressed = true;
         Serial.println("push R");
         switches.moveup();
-        drawLRButtonPushed();
+        updateDrawingCenter();
       }
     }
   }

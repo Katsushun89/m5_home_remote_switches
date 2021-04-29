@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_map>
-#include <string>
+//#include <string>
+#include <Arduino.h>
 
 enum SwitchName{
     SWITCH_HEAD = 0,
@@ -10,12 +11,12 @@ enum SwitchName{
 };
 
 struct SwitchStatus{
-    std::string str;
-    std::string firebase_path;
+    String str;
+    String firebase_path;
     bool is_switched_on;
 };
 
-class Switches 
+class Switches
 {
 private:
     std::unordered_map<uint32_t, SwitchStatus> switch_status;
@@ -27,13 +28,13 @@ public:
     void setup(void);
     SwitchStatus getCurrentSwitchStatus(void);
     bool isSwitchedOnCurrentSwitch(void);
-    std::string getStrCurrentSwitch(void);
-    std::string getFirebasePathCurrentSwitch(void);
-    std::string getStrSwitch(uint32_t switch_number);
-    void setFirebasePath(uint32_t switch_number, std::string str);
-    std::string getFirebasePath(uint32_t switch_number);
+    String getStrCurrentSwitch(void);
+    String getFirebasePathCurrentSwitch(void);
+    String getSwitchName(uint32_t switch_number);
+    void setFirebasePath(uint32_t switch_number, String str);
+    String getFirebasePath(uint32_t switch_number);
     bool toggleSwitch(void);
     void movedown(void);
     void moveup(void);
-    void updatePowerStatus(std::string path, bool power);
+    void updatePowerStatus(String path, bool power);
 };

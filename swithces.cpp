@@ -16,15 +16,14 @@ Switches::Switches()
 
 }
 
-void Switches::updatePowerStatus(std::string path, bool power)
+void Switches::updatePowerStatus(String path, bool power)
 {
-    /*
     for(int i = SWITCH_HEAD + 1; i < SWITCH_TAIL; i++){
-        if(path == switch_status[i].firebase_path){
+        if(path.startsWith(switch_status[i].firebase_path)){
             switch_status[i].is_switched_on = power;
+            Serial.printf("fb_path:%s update power %d\n", switch_status[i].firebase_path.c_str(), switch_status[i].is_switched_on);
         }
     }
-    */
 }
 
 SwitchStatus Switches::getCurrentSwitchStatus(void)
@@ -37,28 +36,28 @@ bool Switches::isSwitchedOnCurrentSwitch(void)
     return switch_status[cur_switch].is_switched_on;
 }
 
-std::string Switches::getStrCurrentSwitch(void)
+String Switches::getStrCurrentSwitch(void)
 {
     return switch_status[cur_switch].str;
 }
 
-std::string Switches::getFirebasePathCurrentSwitch(void)
+String Switches::getFirebasePathCurrentSwitch(void)
 {
     return switch_status[cur_switch].firebase_path;
 }
 
-std::string Switches::getStrSwitch(uint32_t switch_number)
+String Switches::getSwitchName(uint32_t switch_number)
 {
     return switch_status[switch_number].str;
 }
 
 
-void Switches::setFirebasePath(uint32_t switch_number, std::string str)
+void Switches::setFirebasePath(uint32_t switch_number, String str)
 {
     switch_status[switch_number].firebase_path = str;
 }
 
-std::string Switches::getFirebasePath(uint32_t switch_number)
+String Switches::getFirebasePath(uint32_t switch_number)
 {
     return switch_status[switch_number].firebase_path;
 }
