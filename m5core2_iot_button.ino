@@ -117,9 +117,9 @@ void setup(void)
   zoom = (float)(std::min(lcd.width(), lcd.height())) / center_button_width;
 
   lcd.setPivot(center_px, center_py);
-  canvas.setColorDepth(lgfx::palette_4bit);
-  center_base.setColorDepth(lgfx::palette_4bit);
-  center_button.setColorDepth(lgfx::palette_4bit);
+  canvas.setColorDepth(lgfx::palette_2bit);
+  center_base.setColorDepth(lgfx::palette_2bit);
+  center_button.setColorDepth(lgfx::palette_2bit);
 
   button_width = lcd.width() * 7 / 10;
 
@@ -134,15 +134,15 @@ void setup(void)
   canvas.setPaletteColor(1, 0, 0, 15);
   canvas.setPaletteColor(PALETTE_ORANGE, 255, 102, 0);
   //canvas.setPaletteColor(3, 255, 255, 191);
-  canvas.setPaletteColor(3, lcd.color888(255, 51, 0));
-  canvas.setPaletteColor(4, lcd.color888(255, 81, 0));
+  //canvas.setPaletteColor(3, lcd.color888(255, 51, 0));
+  //canvas.setPaletteColor(4, lcd.color888(255, 81, 0));
 
   center_base.setPaletteColor(1, 0, 0, 15);
-  center_base.setPaletteColor(3, lcd.color888(255, 51, 0));
-  center_base.setPaletteColor(4, lcd.color888(255, 81, 0));
+  //center_base.setPaletteColor(3, lcd.color888(255, 51, 0));
+  //center_base.setPaletteColor(4, lcd.color888(255, 81, 0));
 
-  center_button.setPaletteColor(3, lcd.color888(255, 51, 0));
-  center_button.setPaletteColor(4, lcd.color888(255, 81, 0));
+  center_button.setPaletteColor(PALETTE_ORANGE, lcd.color888(255, 51, 0));
+  //center_button.setPaletteColor(3, lcd.color888(255, 81, 0));
 
   center_button.setTextFont(4);
   center_button.setTextDatum(lgfx::middle_center);
@@ -183,8 +183,8 @@ void drawLRButton(void)
   const int top_y = (lcd.height() >> 1) - 20;
   const int mdl_y = (lcd.height() >> 1) - 0;
   const int btm_y = (lcd.height() >> 1) + 20;
-  canvas.fillTriangle(inside_x, top_y, inside_x, btm_y, outside_x, mdl_y, 4);//left
-  canvas.fillTriangle(lcd.width()-inside_x, top_y, lcd.width()-inside_x, btm_y, lcd.width()-outside_x, mdl_y, 4);//right
+  canvas.fillTriangle(inside_x, top_y, inside_x, btm_y, outside_x, mdl_y, PALETTE_ORANGE);//left
+  canvas.fillTriangle(lcd.width()-inside_x, top_y, lcd.width()-inside_x, btm_y, lcd.width()-outside_x, mdl_y, PALETTE_ORANGE);//right
 }
 
 void drawCenterBase(void)
@@ -198,35 +198,35 @@ void drawCenterTransitionOff2On(uint32_t keep_push_time)
 {
   int center = button_width >> 1;
   center_button.fillCircle(center, center, center-1, 1);//clear
-  center_button.drawCircle(center, center, center-2-RING_OUTSIDE_WIDTH, 3);//outside
-  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, 3);//inside
+  center_button.drawCircle(center, center, center-2-RING_OUTSIDE_WIDTH, PALETTE_ORANGE);//outside
+  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, PALETTE_ORANGE);//inside
 
   const uint32_t time_point1 = getDecisionTime() * 1 / 3;
   const uint32_t time_point2 = getDecisionTime() * 2 / 3;
   if(keep_push_time < time_point1){
     uint32_t r = uint32_t(float(keep_push_time) / float(time_point1) * float(RING_OUTSIDE_WIDTH));
     if(r > RING_OUTSIDE_WIDTH) r = RING_OUTSIDE_WIDTH;
-    center_button.fillArc(center, center, center-2+r-RING_OUTSIDE_WIDTH, center-2-RING_OUTSIDE_WIDTH, 0, 20, 4);
-    center_button.fillArc(center, center, center-2+r-RING_OUTSIDE_WIDTH, center-2-RING_OUTSIDE_WIDTH, 180, 180+20, 4);
+    center_button.fillArc(center, center, center-2+r-RING_OUTSIDE_WIDTH, center-2-RING_OUTSIDE_WIDTH, 0, 20, PALETTE_ORANGE);
+    center_button.fillArc(center, center, center-2+r-RING_OUTSIDE_WIDTH, center-2-RING_OUTSIDE_WIDTH, 180, 180+20, PALETTE_ORANGE);
     for(int i = 0; i < RING_INSIDE_DIV; i++){
-      center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, 4);
+      center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, PALETTE_ORANGE);
     }
   }else if(keep_push_time < time_point2 && keep_push_time >= time_point1){
     uint32_t angle = uint32_t(float(keep_push_time-time_point1) / float(time_point2-time_point1) * 180.);
     if(angle > 180) angle = 180;
-    center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 0, angle, 4);
-    center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 180, 180+angle, 4);
+    center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 0, angle, PALETTE_ORANGE);
+    center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 180, 180+angle, PALETTE_ORANGE);
     for(int i = 0; i < RING_INSIDE_DIV; i++){
-      center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, 4);
+      center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, PALETTE_ORANGE);
     }
   }else if(keep_push_time >= time_point2){
-    center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 0, 360, 4);
+    center_button.fillArc(center, center, center-2, center-2-RING_OUTSIDE_WIDTH, 0, 360, PALETTE_ORANGE);
     for(int i = 0; i < RING_INSIDE_DIV; i++){
-      center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, 4);
+      center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, PALETTE_ORANGE);
     }
     uint32_t r = uint32_t(float(keep_push_time-time_point2) / float(getDecisionTime()-time_point2) * RING_INSIDE_WIDTH);
     if(r > RING_INSIDE_WIDTH) r = RING_INSIDE_WIDTH;
-    center_button.fillArc(center, center, center-2+r-RING_TOTAL_WIDTH, center-2-RING_TOTAL_WIDTH, 0, 360, 4);
+    center_button.fillArc(center, center, center-2+r-RING_TOTAL_WIDTH, center-2-RING_TOTAL_WIDTH, 0, 360, PALETTE_ORANGE);
   }
 }
 
@@ -234,18 +234,18 @@ void drawCenterTransitionOn2Off(uint32_t keep_push_time)
 {
   int center = button_width >> 1;
   center_button.fillCircle(center, center, center-1, 1);//clear
-  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, 3);//inside
+  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, PALETTE_ORANGE);//inside
   for(int i = 0; i < RING_INSIDE_DIV; i++){
-    center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, 4);
+    center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, PALETTE_ORANGE);
   }
   //outside
   //uint32_t r1 = uint32_t(float(keep_push_time) / float(getDecisionTime()) * float(RING_OUTSIDE_WIDTH));
   //if(r1 > RING_OUTSIDE_WIDTH) r1 = RING_OUTSIDE_WIDTH;
-  center_button.drawCircle(center, center, center-2-RING_OUTSIDE_WIDTH, 3);//outside
+  center_button.drawCircle(center, center, center-2-RING_OUTSIDE_WIDTH, PALETTE_ORANGE);//outside
   //fill
   uint32_t r2 = uint32_t(float(keep_push_time) / float(getDecisionTime()) * float(RING_TOTAL_WIDTH));
   if(r2 > RING_TOTAL_WIDTH) r2 = RING_TOTAL_WIDTH;
-  center_button.fillArc(center, center, center-2-r2, center-2-RING_TOTAL_WIDTH, 0, 360, 4);
+  center_button.fillArc(center, center, center-2-r2, center-2-RING_TOTAL_WIDTH, 0, 360, PALETTE_ORANGE);
 }
 
 void updateButtonStr(bool onOff)
@@ -253,11 +253,7 @@ void updateButtonStr(bool onOff)
   int x = center_button.getPivotX() - 55;
   int y = center_button.getPivotY();
   center_button.setCursor(x, y);
-  if(onOff){
-    center_button.setTextColor(3);
-  }else{
-    center_button.setTextColor(4);
-  }
+  center_button.setTextColor(PALETTE_ORANGE);
   center_button.setTextSize(0.75);
 
   center_button.printf("%s", switches.getStrCurrentSwitch().c_str());
@@ -268,9 +264,9 @@ void drawCenterON(void)
   Serial.println("drawCenterOn\n");
   int center = button_width >> 1;
   center_button.fillCircle(center, center, center-1, 1);
-  center_button.drawCircle(center, center, center-2, 3);
-  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, 3);
-  center_button.fillArc(center, center, center-2, center-2-RING_TOTAL_WIDTH, 0, 360, 4);
+  center_button.drawCircle(center, center, center-2, PALETTE_ORANGE);
+  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, PALETTE_ORANGE);
+  center_button.fillArc(center, center, center-2, center-2-RING_TOTAL_WIDTH, 0, 360, PALETTE_ORANGE);
   updateButtonStr(true);
 }
 
@@ -279,10 +275,10 @@ void drawCenterOFF(void)
   Serial.println("drawCenterOff\n");
   int center = button_width >> 1;
   center_button.fillCircle(center, center, center-1, 1);
-  center_button.drawCircle(center, center, center-2-RING_OUTSIDE_WIDTH, 3);
-  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, 3);
+  center_button.drawCircle(center, center, center-2-RING_OUTSIDE_WIDTH, PALETTE_ORANGE);
+  center_button.drawCircle(center, center, center-2-RING_TOTAL_WIDTH, PALETTE_ORANGE);
   for(int i = 0; i < RING_INSIDE_DIV; i++){
-    center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, 4);
+    center_button.fillArc(center, center, center-2-RING_OUTSIDE_WIDTH, center-2-RING_TOTAL_WIDTH, 360/RING_INSIDE_DIV*i, 360/RING_INSIDE_DIV*i, PALETTE_ORANGE);
   }
   updateButtonStr(false);
 }
@@ -367,6 +363,10 @@ void keepTouchCenterButton(void)
 
     //sync firebase rtdb
     //Firebase.setBool(switches.getFirebasePathCurrentSwitch().c_str(), is_switched_on);
+    bool ret = Firebase.setBool(fbdo2, parentPath + switches.getFirebasePathCurrentSwitch() + "/power", is_switched_on);
+    if(!ret){
+      Serial.printf("setBool error %s\n", fbdo2.errorReason().c_str());
+    }
 
     is_in_transition_center_state = false;
     invalid_time = cur_time + INVALID_DURATION;
