@@ -5,6 +5,7 @@
 #include "ui_draw.h"
 #include "switches.h"
 #include "config.h"
+#include "addons/RTDBHelper.h"
 
 static LGFX lcd;
 static LGFX_Sprite canvas(&lcd);
@@ -17,6 +18,7 @@ static float zoom;
 static auto transpalette = 0;
 static int button_width;
 
+const int PALETTE_BLACK = 1;
 const int PALETTE_ORANGE = 2;
 
 UIDraw uidraw;
@@ -29,6 +31,8 @@ FirebaseData fbdo2;
 String parentPath = "/switches";
 String childPath[CHILD_NUM] = {"/CRAFTROOM","/3D PRINTER"};
 size_t childPathSize = CHILD_NUM;
+
+TaskHandle_t th[4];
 
 void setupWiFi()
 {
@@ -85,6 +89,21 @@ void setupFirebase(void)
   Firebase.begin(FIREBASE_DATABASE_URL, FIREBASE_AUTH);
   Firebase.reconnectWiFi(true);
 
+  //Set the size of HTTP response buffers in the case where we want to work with large data.
+  fbdo1.setResponseSize(1024);
+
+  //The data under the node being stream (parent path) should keep small
+  //Large stream payload leads to the parsing error due to memory allocation.
+  if (!Firebase.beginStream(fbdo1, parentPath.c_str()))
+  {
+    Serial.println("------------------------------------");
+    Serial.println("Can't begin stream connection...");
+    Serial.println("REASON: " + fbdo1.errorReason());
+    Serial.println("------------------------------------");
+    Serial.println();
+  }
+
+/*
   if (!Firebase.beginMultiPathStream(fbdo1, parentPath, childPath, childPathSize))
   {
     Serial.println("------------------------------------");
@@ -97,6 +116,8 @@ void setupFirebase(void)
   //Set the reserved size of stack memory in bytes for internal stream callback processing RTOS task.
   //8192 is the minimum size.
   Firebase.setMultiPathStreamCallback(fbdo1, streamCallback, streamTimeoutCallback, 8192);
+*/
+
 }
 
 void updateFirebasePowerStatus(String path, bool power)
@@ -131,13 +152,13 @@ void setup(void)
   center_base.fillScreen(transpalette);
   center_button.fillScreen(transpalette);
 
-  canvas.setPaletteColor(1, 0, 0, 15);
+  canvas.setPaletteColor(PALETTE_BLACK, 0, 0, 15);
   canvas.setPaletteColor(PALETTE_ORANGE, 255, 102, 0);
   //canvas.setPaletteColor(3, 255, 255, 191);
   //canvas.setPaletteColor(3, lcd.color888(255, 51, 0));
   //canvas.setPaletteColor(4, lcd.color888(255, 81, 0));
 
-  center_base.setPaletteColor(1, 0, 0, 15);
+  center_base.setPaletteColor(PALETTE_BLACK, 0, 0, 15);
   //center_base.setPaletteColor(3, lcd.color888(255, 51, 0));
   //center_base.setPaletteColor(4, lcd.color888(255, 81, 0));
 
@@ -157,8 +178,91 @@ void setup(void)
   switches.setFirebasePath(STUDIO_LIGHT, childPath[0]);
   switches.setFirebasePath(PRINTER_3D, childPath[1]);
 
+  //setupWiFi();
+  //setupFirebase();
+
+  xTaskCreatePinnedToCore(firebaseControl, "FirebaseControl", 4096*2, NULL, 1, &th[0], 1);
+}
+
+unsigned long sendDataPrevMillis = 0;
+
+void firebaseControl(void *pvParameters)
+{
   setupWiFi();
   setupFirebase();
+
+  while(1){
+    if (Firebase.ready() && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)){
+      sendDataPrevMillis = millis();
+
+      static bool flag = false;
+
+      //Firebase.setBool(switches.getFirebasePathCurrentSwitch().c_str(), is_switched_on);
+      Serial.printf("Free internal heap before TLS %u\n", ESP.getFreeHeap());
+      //bool ret = Firebase.setBool(fbdo2, parentPath + switches.getFirebasePathCurrentSwitch() + "/power", is_switched_on);
+      bool ret = Firebase.setBool(fbdo1, parentPath + switches.getFirebasePathCurrentSwitch() + "/power", flag);
+      flag = !flag;
+      if(!ret){
+        Serial.printf("setBool error %s\n", fbdo2.errorReason().c_str());
+      }
+    }
+
+    if (Firebase.ready())
+    {
+
+      if (!Firebase.readStream(fbdo1))
+      {
+        Serial.println("------------------------------------");
+        Serial.println("Can't read stream data...");
+        Serial.println("REASON: " + fbdo1.errorReason());
+        Serial.println("------------------------------------");
+        Serial.println();
+      }
+
+      if (fbdo1.streamTimeout())
+      {
+        Serial.println("Stream timeout, resume streaming...");
+        Serial.println();
+      }
+
+      if (fbdo1.streamAvailable())
+      {
+        Serial.println("------------------------------------");
+        Serial.println("Stream Data available...");
+        Serial.println("STREAM PATH: " + fbdo1.streamPath());
+        Serial.println("EVENT PATH: " + fbdo1.dataPath());
+        Serial.println("DATA TYPE: " + fbdo1.dataType());
+        Serial.println("EVENT TYPE: " + fbdo1.eventType());
+        Serial.print("VALUE: ");
+        printResult(fbdo1);
+        Serial.println("------------------------------------");
+        Serial.println();
+
+        if (fbdo1.dataType() == "json")
+        {
+          FirebaseJson &json = fbdo1.jsonObject();
+          size_t len = json.iteratorBegin();
+          String key, value = "";
+          int type = 0;
+          for (size_t i = 0; i < len; i++)
+          {
+            json.iteratorGet(i, type, key, value);
+            for(int j = 0; j < CHILD_NUM; j++){
+              if(childPath[j].endsWith(key) && value.indexOf("power") >= 0){
+                bool result_power = false;
+                if(value.indexOf("true") >= 0){
+                  result_power = true;
+                }
+                Serial.printf("%s power:%d\n", childPath[j].c_str(), result_power);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    vTaskDelay(10);
+  }
 }
 
 const uint32_t CENTER_ON_TIME = 1200;
@@ -190,7 +294,7 @@ void drawLRButton(void)
 void drawCenterBase(void)
 {
   int center = button_width >> 1;
-  center_base.fillRect(0, 0, button_width, button_width, 1);
+  center_base.fillRect(0, 0, button_width, button_width, PALETTE_BLACK);
   center_base.pushRotateZoom(0, zoom, zoom, transpalette);
 }
 
@@ -362,11 +466,6 @@ void keepTouchCenterButton(void)
     bool is_switched_on = switches.toggleSwitch();
 
     //sync firebase rtdb
-    //Firebase.setBool(switches.getFirebasePathCurrentSwitch().c_str(), is_switched_on);
-    bool ret = Firebase.setBool(fbdo2, parentPath + switches.getFirebasePathCurrentSwitch() + "/power", is_switched_on);
-    if(!ret){
-      Serial.printf("setBool error %s\n", fbdo2.errorReason().c_str());
-    }
 
     is_in_transition_center_state = false;
     invalid_time = cur_time + INVALID_DURATION;
