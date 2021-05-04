@@ -43,6 +43,7 @@ size_t childPathSize = CHILD_NUM;
 
 struct DATA_STREAM
 {
+  bool switch_updated[CHILD_NUM];
   bool switch_power[CHILD_NUM];
 };
 
@@ -144,7 +145,7 @@ bool receiveQueueStream(DATA_STREAM &recv_data)
   if(queue_num == 0){
     return false;
   }
-  Serial.printf("xQueueReceive stream num %d\n", queue_num);
+  //Serial.printf("xQueueReceive stream num %d\n", queue_num);
   const TickType_t xTicksToWait = 10U; // [ms]
   BaseType_t xStatus = xQueueReceive(xQueueStream, &recv_data, xTicksToWait);
   if(xStatus == pdPASS) // receive error check
@@ -204,65 +205,107 @@ void setup(void)
   sleep(1);//wait 1sec
 }
 
+void readStreamBool(void)
+{
+  DATA_STREAM send_data;
+  for(int i = 0; i < CHILD_NUM; i++){
+    send_data.switch_updated[i] = false;
+  }
+
+  for(int j = 0; j < CHILD_NUM; j++){
+    if(fbdo.dataPath().indexOf(childPath[j]) >= 0){
+      bool result_power = false;
+      if(fbdo.boolData() == 1){
+        result_power = true;
+      }
+      send_data.switch_power[j] = result_power;
+      send_data.switch_updated[j] = true;
+      Serial.printf("%s power:%d\n", childPath[j].c_str(), result_power);
+      break;
+    }
+  }
+  sendQueueStream(send_data);
+}
+
+void readStreamJson(void)
+{
+  DATA_STREAM send_data;
+  for(int i = 0; i < CHILD_NUM; i++){
+    send_data.switch_updated[i] = false;
+  }
+  FirebaseJson &json = fbdo.jsonObject();
+  size_t len = json.iteratorBegin();
+  String key, value = "";
+  int type = 0;
+  for (size_t i = 0; i < len; i++)
+  {
+    json.iteratorGet(i, type, key, value);
+    for(int j = 0; j < CHILD_NUM; j++){
+      if(childPath[j].endsWith(key) && value.indexOf("power") >= 0){
+        bool result_power = false;
+        if(value.indexOf("true") >= 0){
+          result_power = true;
+        }
+        send_data.switch_power[j] = result_power;
+        send_data.switch_updated[j] = true;
+        Serial.printf("%s power:%d\n", childPath[j].c_str(), result_power);
+        break;
+      }
+    }
+  }
+  sendQueueStream(send_data);
+}
+
+void syncSetBool(void)
+{
+  if (Firebase.ready()){
+    DATA_SET_BOOL recv_data;
+    if(receiveQueueSetBool(recv_data)){
+      Serial.printf("Free internal heap before TLS %u\n", ESP.getFreeHeap());
+      bool ret = Firebase.setBool(fbdo, parentPath + switches.getFirebasePath(recv_data.switch_number) + "/power", recv_data.power);
+      if(!ret){
+        Serial.printf("setBool error %s\n", fbdo.errorReason().c_str());
+      }
+    }
+  }
+}
+
+void syncStream(void)
+{
+  if (Firebase.ready())
+  {
+    if (!Firebase.readStream(fbdo))
+    {
+      Serial.println("Can't read stream data...");
+      Serial.println("REASON: " + fbdo.errorReason());
+    }
+
+    if (fbdo.streamTimeout())
+    {
+      Serial.println("Stream timeout, resume streaming...");
+    }
+
+    if (fbdo.streamAvailable())
+    {
+      if(fbdo.dataType() == "boolean")
+      {
+        readStreamBool();
+      }else if (fbdo.dataType() == "json")
+      {
+        readStreamJson();
+      }
+    }
+  }
+}
+
 void firebaseControl(void *pvParameters)
 {
   setupWiFi();
   setupFirebase();
 
   while(1){
-    if (Firebase.ready()){
-      DATA_SET_BOOL recv_data;
-      if(receiveQueueSetBool(recv_data)){
-        Serial.printf("Free internal heap before TLS %u\n", ESP.getFreeHeap());
-        bool ret = Firebase.setBool(fbdo, parentPath + switches.getFirebasePath(recv_data.switch_number) + "/power", recv_data.power);
-        if(!ret){
-          Serial.printf("setBool error %s\n", fbdo.errorReason().c_str());
-        }
-      }
-    }
-
-    if (Firebase.ready())
-    {
-      if (!Firebase.readStream(fbdo))
-      {
-        Serial.println("Can't read stream data...");
-        Serial.println("REASON: " + fbdo.errorReason());
-      }
-
-      if (fbdo.streamTimeout())
-      {
-        Serial.println("Stream timeout, resume streaming...");
-      }
-
-      if (fbdo.streamAvailable())
-      {
-        if (fbdo.dataType() == "json")
-        {
-          DATA_STREAM send_data;
-          FirebaseJson &json = fbdo.jsonObject();
-          size_t len = json.iteratorBegin();
-          String key, value = "";
-          int type = 0;
-          for (size_t i = 0; i < len; i++)
-          {
-            json.iteratorGet(i, type, key, value);
-            for(int j = 0; j < CHILD_NUM; j++){
-              if(childPath[j].endsWith(key) && value.indexOf("power") >= 0){
-                bool result_power = false;
-                if(value.indexOf("true") >= 0){
-                  result_power = true;
-                }
-                send_data.switch_power[j] = result_power;
-                Serial.printf("%s power:%d\n", childPath[j].c_str(), result_power);
-                break;
-              }
-            }
-          }
-
-          sendQueueStream(send_data);
-        }
-      }
-    }
+    syncSetBool();
+    syncStream();
     vTaskDelay(10);
   }
 }
@@ -480,7 +523,6 @@ void keepTouchCenterButton(void)
   //Serial.printf("1:%d, %d\n", cur_time, keep_time_push_center);
   uidraw.pushEvent(collectButtonStatus());
   return;
-
 }
 
 ButtonStatus collectButtonStatus(void)
@@ -578,7 +620,9 @@ void updateStreamSwitchStatus(void)
   DATA_STREAM recv_data;
   if(receiveQueueStream(recv_data)){
     for(int32_t i = 0; i < SWITCH_TAIL; i++){
-      switches.updatePowerStatus(i, recv_data.switch_power[i]);
+      if(recv_data.switch_updated[i]){
+        switches.updatePowerStatus(i, recv_data.switch_power[i]);
+      }
     }
     updateDrawingCenter();
   }
