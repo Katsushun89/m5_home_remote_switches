@@ -180,18 +180,10 @@ void setup(void)
   center_base.fillScreen(transpalette);
   center_button.fillScreen(transpalette);
 
-  canvas.setPaletteColor(PALETTE_BLACK, 0, 0, 15);
-  canvas.setPaletteColor(PALETTE_ORANGE, 255, 102, 0);
-  //canvas.setPaletteColor(3, 255, 255, 191);
-  //canvas.setPaletteColor(3, lcd.color888(255, 51, 0));
-  //canvas.setPaletteColor(4, lcd.color888(255, 81, 0));
-
-  center_base.setPaletteColor(PALETTE_BLACK, 0, 0, 15);
-  //center_base.setPaletteColor(3, lcd.color888(255, 51, 0));
-  //center_base.setPaletteColor(4, lcd.color888(255, 81, 0));
-
-  center_button.setPaletteColor(PALETTE_ORANGE, lcd.color888(255, 51, 0));
-  //center_button.setPaletteColor(3, lcd.color888(255, 81, 0));
+  canvas.setPaletteColor(PALETTE_BLACK, lcd.color888(0, 0, 15));
+  canvas.setPaletteColor(PALETTE_ORANGE, lcd.color888(255, 81, 0));
+  center_base.setPaletteColor(PALETTE_BLACK, lcd.color888(0, 0, 15));
+  center_button.setPaletteColor(PALETTE_ORANGE, lcd.color888(255, 81, 0));
 
   center_button.setTextFont(4);
   center_button.setTextDatum(lgfx::middle_center);
@@ -244,14 +236,6 @@ void firebaseControl(void *pvParameters)
 
       if (fbdo.streamAvailable())
       {
-        Serial.println("Stream Data available...");
-        Serial.println("STREAM PATH: " + fbdo.streamPath());
-        Serial.println("EVENT PATH: " + fbdo.dataPath());
-        Serial.println("DATA TYPE: " + fbdo.dataType());
-        Serial.println("EVENT TYPE: " + fbdo.eventType());
-        Serial.print("VALUE: ");
-        printResult(fbdo);
-
         if (fbdo.dataType() == "json")
         {
           DATA_STREAM send_data;
@@ -536,12 +520,12 @@ void judgeCenterButton(TouchPoint_t pos, bool is_touch_pressed)
 
 void resetTranstionPrams(void)
 {
+  //Serial.println("resetTranstionPrams");
   is_in_transition_center_state = false;
   is_once_released_after_switch_on = false;
   start_time_push_center = 0;
   keep_time_push_center = 0;
   invalid_time = 0;
-  Serial.println("resetTranstionPrams");
 }
 
 void judgeBottomButtons(TouchPoint_t pos, bool is_touch_pressed)
