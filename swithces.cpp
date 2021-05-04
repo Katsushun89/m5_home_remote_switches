@@ -18,15 +18,20 @@ Switches::Switches()
 
 void Switches::updatePowerStatus(String path, bool power)
 {
-    for(int i = SWITCH_HEAD + 1; i < SWITCH_TAIL; i++){
+    for(int32_t i = 0; i < SWITCH_TAIL; i++){
         if(path.startsWith(switch_status[i].firebase_path)){
             switch_status[i].is_switched_on = power;
-            Serial.printf("fb_path:%s update power %d\n", switch_status[i].firebase_path.c_str(), switch_status[i].is_switched_on);
         }
     }
 }
 
-uint32_t Switches::getCurrentSwitchNumber(void)
+void Switches::updatePowerStatus(int32_t switch_number, bool power)
+{
+    switch_status[switch_number].is_switched_on = power;
+}
+
+
+int32_t Switches::getCurrentSwitchNumber(void)
 {
     return cur_switch;
 }
@@ -51,18 +56,18 @@ String Switches::getFirebasePathCurrentSwitch(void)
     return switch_status[cur_switch].firebase_path;
 }
 
-String Switches::getSwitchName(uint32_t switch_number)
+String Switches::getSwitchName(int32_t switch_number)
 {
     return switch_status[switch_number].str;
 }
 
 
-void Switches::setFirebasePath(uint32_t switch_number, String str)
+void Switches::setFirebasePath(int32_t switch_number, String str)
 {
     switch_status[switch_number].firebase_path = str;
 }
 
-String Switches::getFirebasePath(uint32_t switch_number)
+String Switches::getFirebasePath(int32_t switch_number)
 {
     return switch_status[switch_number].firebase_path;
 }
@@ -79,7 +84,7 @@ bool Switches::toggleSwitch(void)
 void Switches::movedown(void)
 {
     cur_switch--;
-    if(cur_switch <= SWITCH_HEAD){
+    if(cur_switch < 0){
         cur_switch = SWITCH_TAIL - 1;
     }
 }
@@ -88,6 +93,6 @@ void Switches::moveup(void)
 {
     cur_switch++;
     if(cur_switch >= SWITCH_TAIL){
-        cur_switch = SWITCH_HEAD + 1;
+        cur_switch = 0;
     }
 }

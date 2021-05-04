@@ -4,8 +4,7 @@
 #include <Arduino.h>
 
 enum SwitchName{
-    SWITCH_HEAD = 0,
-    CRAFTROOM_LIGHT,
+    CRAFTROOM_LIGHT = 0,
     PRINTER_3D,
     SWITCH_TAIL,//threshold
 };
@@ -19,23 +18,25 @@ struct SwitchStatus{
 class Switches
 {
 private:
-    std::unordered_map<uint32_t, SwitchStatus> switch_status;
-    uint32_t cur_switch;
+    std::unordered_map<int32_t, SwitchStatus> switch_status;
+    int32_t cur_switch;
 
 public:
     Switches();
     ~Switches() = default;
     void setup(void);
-    uint32_t getCurrentSwitchNumber(void);
+    int32_t getCurrentSwitchNumber(void);
     SwitchStatus getCurrentSwitchStatus(void);
     bool isSwitchedOnCurrentSwitch(void);
     String getStrCurrentSwitch(void);
     String getFirebasePathCurrentSwitch(void);
-    String getSwitchName(uint32_t switch_number);
-    void setFirebasePath(uint32_t switch_number, String str);
-    String getFirebasePath(uint32_t switch_number);
+    String getSwitchName(int32_t switch_number);
+    void setFirebasePath(int32_t switch_number, String str);
+    String getFirebasePath(int32_t switch_number);
     bool toggleSwitch(void);
     void movedown(void);
     void moveup(void);
     void updatePowerStatus(String path, bool power);
+    void updatePowerStatus(int32_t switch_number, bool power);
+
 };

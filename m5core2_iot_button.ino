@@ -24,31 +24,27 @@ const int PALETTE_ORANGE = 2;
 UIDraw uidraw;
 Switches switches;
 
-FirebaseData fbdo1;
-FirebaseData fbdo2;
+FirebaseData fbdo;
 
 //XQueueSend/Receive
 struct DATA_SET_BOOL
 {
-  uint32_t switch_number;
+  int32_t switch_number;
   bool power;
-};
-
-struct DATA_STREAM
-{
-  bool craftroom_power;
-  bool printer_3d_power;
 };
 
 QueueHandle_t xQueueSetBool;
 QueueHandle_t xQueueStream;
-DATA_SET_BOOL data_set_bool;
-DATA_STREAM data_stream;
 
 #define CHILD_NUM (2)
 String parentPath = "/switches";
 String childPath[CHILD_NUM] = {"/CRAFTROOM","/3D PRINTER"};
 size_t childPathSize = CHILD_NUM;
+
+struct DATA_STREAM
+{
+  bool switch_power[CHILD_NUM];
+};
 
 TaskHandle_t th[4];
 
@@ -77,31 +73,25 @@ void setupFirebase(void)
   Firebase.reconnectWiFi(true);
 
   //Set the size of HTTP response buffers in the case where we want to work with large data.
-  fbdo1.setResponseSize(1024);
+  fbdo.setResponseSize(1024);
 
   //The data under the node being stream (parent path) should keep small
   //Large stream payload leads to the parsing error due to memory allocation.
-  if (!Firebase.beginStream(fbdo1, parentPath.c_str()))
+  if (!Firebase.beginStream(fbdo, parentPath.c_str()))
   {
     Serial.println("Can't begin stream connection...");
-    Serial.println("REASON: " + fbdo1.errorReason());
+    Serial.println("REASON: " + fbdo.errorReason());
   }
-}
-
-void updateFirebasePowerStatus(String path, bool power)
-{
-  switches.updatePowerStatus(path, power);
-  updateDrawingCenter();
 }
 
 void setupQueue(void)
 {
   xQueueSetBool = xQueueCreate(3, sizeof(DATA_SET_BOOL));
-  if(xQueueSetBool != NULL){
+  if(xQueueSetBool == NULL){
     Serial.println("rtos queue create error setBool");
   }
   xQueueStream = xQueueCreate(3, sizeof(DATA_STREAM));
-  if(xQueueStream != NULL){
+  if(xQueueStream == NULL){
     Serial.println("rtos queue create error stream");
   }
 }
@@ -111,11 +101,11 @@ void setupTask(void)
   xTaskCreatePinnedToCore(firebaseControl, "FirebaseControl", 4096*2, NULL, 1, &th[0], 1);
 }
 
-void sendQueueSetBool(uint32_t switch_number, bool power)
+void sendQueueSetBool(int32_t switch_number, bool power)
 {
-  data_set_bool = {switch_number, power};
+  DATA_SET_BOOL send_data = {switch_number, power};
 
-  BaseType_t xStatus = xQueueSend(xQueueSetBool, &data_set_bool, 0);
+  BaseType_t xStatus = xQueueSend(xQueueSetBool, &send_data, 0);
 
   if(xStatus != pdPASS) // send error check
   {
@@ -134,6 +124,32 @@ bool receiveQueueSetBool(DATA_SET_BOOL &recv_data)
   if(uxQueueMessagesWaiting(xQueueSetBool) != 0){
     Serial.println("xQueueReceive error setBool");
     return false;
+  }
+  return false;//not received
+}
+
+void sendQueueStream(DATA_STREAM send_data)
+{
+  BaseType_t xStatus = xQueueSend(xQueueStream, &send_data, 0);
+
+  if(xStatus != pdPASS) // send error check
+  {
+    Serial.println("xQeueuSend error stream");
+  }
+}
+
+bool receiveQueueStream(DATA_STREAM &recv_data)
+{
+  UBaseType_t queue_num = uxQueueMessagesWaiting(xQueueStream);
+  if(queue_num == 0){
+    return false;
+  }
+  Serial.printf("xQueueReceive stream num %d\n", queue_num);
+  const TickType_t xTicksToWait = 10U; // [ms]
+  BaseType_t xStatus = xQueueReceive(xQueueStream, &recv_data, xTicksToWait);
+  if(xStatus == pdPASS) // receive error check
+  {
+    return true;
   }
   return false;//not received
 }
@@ -192,6 +208,8 @@ void setup(void)
 
   setupQueue();
   setupTask();
+
+  sleep(1);//wait 1sec
 }
 
 void firebaseControl(void *pvParameters)
@@ -204,46 +222,40 @@ void firebaseControl(void *pvParameters)
       DATA_SET_BOOL recv_data;
       if(receiveQueueSetBool(recv_data)){
         Serial.printf("Free internal heap before TLS %u\n", ESP.getFreeHeap());
-        bool ret = Firebase.setBool(fbdo2, parentPath + switches.getFirebasePath(recv_data.switch_number) + "/power", recv_data.power);
+        bool ret = Firebase.setBool(fbdo, parentPath + switches.getFirebasePath(recv_data.switch_number) + "/power", recv_data.power);
         if(!ret){
-          Serial.printf("setBool error %s\n", fbdo2.errorReason().c_str());
+          Serial.printf("setBool error %s\n", fbdo.errorReason().c_str());
         }
       }
     }
 
     if (Firebase.ready())
     {
-      if (!Firebase.readStream(fbdo1))
+      if (!Firebase.readStream(fbdo))
       {
-        Serial.println("------------------------------------");
         Serial.println("Can't read stream data...");
-        Serial.println("REASON: " + fbdo1.errorReason());
-        Serial.println("------------------------------------");
-        Serial.println();
+        Serial.println("REASON: " + fbdo.errorReason());
       }
 
-      if (fbdo1.streamTimeout())
+      if (fbdo.streamTimeout())
       {
         Serial.println("Stream timeout, resume streaming...");
-        Serial.println();
       }
 
-      if (fbdo1.streamAvailable())
+      if (fbdo.streamAvailable())
       {
-        Serial.println("------------------------------------");
         Serial.println("Stream Data available...");
-        Serial.println("STREAM PATH: " + fbdo1.streamPath());
-        Serial.println("EVENT PATH: " + fbdo1.dataPath());
-        Serial.println("DATA TYPE: " + fbdo1.dataType());
-        Serial.println("EVENT TYPE: " + fbdo1.eventType());
+        Serial.println("STREAM PATH: " + fbdo.streamPath());
+        Serial.println("EVENT PATH: " + fbdo.dataPath());
+        Serial.println("DATA TYPE: " + fbdo.dataType());
+        Serial.println("EVENT TYPE: " + fbdo.eventType());
         Serial.print("VALUE: ");
-        printResult(fbdo1);
-        Serial.println("------------------------------------");
-        Serial.println();
+        printResult(fbdo);
 
-        if (fbdo1.dataType() == "json")
+        if (fbdo.dataType() == "json")
         {
-          FirebaseJson &json = fbdo1.jsonObject();
+          DATA_STREAM send_data;
+          FirebaseJson &json = fbdo.jsonObject();
           size_t len = json.iteratorBegin();
           String key, value = "";
           int type = 0;
@@ -256,11 +268,14 @@ void firebaseControl(void *pvParameters)
                 if(value.indexOf("true") >= 0){
                   result_power = true;
                 }
+                send_data.switch_power[j] = result_power;
                 Serial.printf("%s power:%d\n", childPath[j].c_str(), result_power);
                 break;
               }
             }
           }
+
+          sendQueueStream(send_data);
         }
       }
     }
@@ -574,7 +589,16 @@ void judgeLRButton(TouchPoint_t pos, bool is_touch_pressed)
   }
 }
 
-
+void updateStreamSwitchStatus(void)
+{
+  DATA_STREAM recv_data;
+  if(receiveQueueStream(recv_data)){
+    for(int32_t i = 0; i < SWITCH_TAIL; i++){
+      switches.updatePowerStatus(i, recv_data.switch_power[i]);
+    }
+    updateDrawingCenter();
+  }
+}
 
 void loop(void)
 {
@@ -582,6 +606,7 @@ void loop(void)
   bool is_touch_pressed = false;
   if(M5.Touch.ispressed()) is_touch_pressed = true;
 
+  updateStreamSwitchStatus();
   judgeBottomButtons(pos, is_touch_pressed);
   judgeCenterButton(pos, is_touch_pressed);
   judgeLRButton(pos, is_touch_pressed);
