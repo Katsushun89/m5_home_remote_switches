@@ -7,12 +7,12 @@ Switches::Switches()
 
     //initialize
     status.str = "CRAFTROOM";
-    switch_status[STUDIO_LIGHT] = status;
+    switch_status[CRAFTROOM_LIGHT] = status;
 
     status.str = "3D PRINTER";
     switch_status[PRINTER_3D] = status;
 
-    cur_switch = STUDIO_LIGHT;
+    cur_switch = CRAFTROOM_LIGHT;
 
 }
 
@@ -24,6 +24,11 @@ void Switches::updatePowerStatus(String path, bool power)
             Serial.printf("fb_path:%s update power %d\n", switch_status[i].firebase_path.c_str(), switch_status[i].is_switched_on);
         }
     }
+}
+
+uint32_t Switches::getCurrentSwitchNumber(void)
+{
+    return cur_switch;
 }
 
 SwitchStatus Switches::getCurrentSwitchStatus(void)

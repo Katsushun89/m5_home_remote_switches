@@ -5,7 +5,7 @@
 
 enum SwitchName{
     SWITCH_HEAD = 0,
-    STUDIO_LIGHT,
+    CRAFTROOM_LIGHT,
     PRINTER_3D,
     SWITCH_TAIL,//threshold
 };
@@ -26,6 +26,7 @@ public:
     Switches();
     ~Switches() = default;
     void setup(void);
+    uint32_t getCurrentSwitchNumber(void);
     SwitchStatus getCurrentSwitchStatus(void);
     bool isSwitchedOnCurrentSwitch(void);
     String getStrCurrentSwitch(void);

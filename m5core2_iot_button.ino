@@ -27,6 +27,24 @@ Switches switches;
 FirebaseData fbdo1;
 FirebaseData fbdo2;
 
+//XQueueSend/Receive
+struct DATA_SET_BOOL
+{
+  uint32_t switch_number;
+  bool power;
+};
+
+struct DATA_STREAM
+{
+  bool craftroom_power;
+  bool printer_3d_power;
+};
+
+QueueHandle_t xQueueSetBool;
+QueueHandle_t xQueueStream;
+DATA_SET_BOOL data_set_bool;
+DATA_STREAM data_stream;
+
 #define CHILD_NUM (2)
 String parentPath = "/switches";
 String childPath[CHILD_NUM] = {"/CRAFTROOM","/3D PRINTER"};
@@ -53,37 +71,6 @@ void setupWiFi()
   Serial.println("Connected to Wifi, Connecting to server.");
 }
 
-void streamCallback(MultiPathStreamData stream)
-{
-  Serial.println();
-  Serial.println("Stream Data1 available...");
-
-  size_t numChild = sizeof(childPath)/sizeof(childPath[0]);
-
-  for(size_t i = 0;i< numChild;i++){
-    if (stream.get(childPath[i])){
-      Serial.println("path: " + stream.dataPath + ", type: " + stream.type + ", value: " + stream.value);
-      bool power = false;
-      if(stream.value.indexOf("true") >= 0){
-        power = true;
-      }
-      updateFirebasePowerStatus(stream.dataPath, power);
-    }
-  }
-
-  Serial.println();
-}
-
-void streamTimeoutCallback(bool timeout)
-{
-  if (timeout)
-  {
-    Serial.println();
-    Serial.println("Stream timeout, resume streaming...");
-    Serial.println();
-  }
-}
-
 void setupFirebase(void)
 {
   Firebase.begin(FIREBASE_DATABASE_URL, FIREBASE_AUTH);
@@ -96,34 +83,59 @@ void setupFirebase(void)
   //Large stream payload leads to the parsing error due to memory allocation.
   if (!Firebase.beginStream(fbdo1, parentPath.c_str()))
   {
-    Serial.println("------------------------------------");
     Serial.println("Can't begin stream connection...");
     Serial.println("REASON: " + fbdo1.errorReason());
-    Serial.println("------------------------------------");
-    Serial.println();
   }
-
-/*
-  if (!Firebase.beginMultiPathStream(fbdo1, parentPath, childPath, childPathSize))
-  {
-    Serial.println("------------------------------------");
-    Serial.println("Can't begin stream connection...");
-    Serial.println("REASON: " + fbdo1.errorReason());
-    Serial.println("------------------------------------");
-    Serial.println();
-  }
-
-  //Set the reserved size of stack memory in bytes for internal stream callback processing RTOS task.
-  //8192 is the minimum size.
-  Firebase.setMultiPathStreamCallback(fbdo1, streamCallback, streamTimeoutCallback, 8192);
-*/
-
 }
 
 void updateFirebasePowerStatus(String path, bool power)
 {
   switches.updatePowerStatus(path, power);
   updateDrawingCenter();
+}
+
+void setupQueue(void)
+{
+  xQueueSetBool = xQueueCreate(3, sizeof(DATA_SET_BOOL));
+  if(xQueueSetBool != NULL){
+    Serial.println("rtos queue create error setBool");
+  }
+  xQueueStream = xQueueCreate(3, sizeof(DATA_STREAM));
+  if(xQueueStream != NULL){
+    Serial.println("rtos queue create error stream");
+  }
+}
+
+void setupTask(void)
+{
+  xTaskCreatePinnedToCore(firebaseControl, "FirebaseControl", 4096*2, NULL, 1, &th[0], 1);
+}
+
+void sendQueueSetBool(uint32_t switch_number, bool power)
+{
+  data_set_bool = {switch_number, power};
+
+  BaseType_t xStatus = xQueueSend(xQueueSetBool, &data_set_bool, 0);
+
+  if(xStatus != pdPASS) // send error check
+  {
+    Serial.println("xQeueuSend error setBool");
+  }
+}
+
+bool receiveQueueSetBool(DATA_SET_BOOL &recv_data)
+{
+  const TickType_t xTicksToWait = 500U; // [ms]
+  BaseType_t xStatus = xQueueReceive(xQueueSetBool, &recv_data, xTicksToWait);
+  if(xStatus == pdPASS) // receive error check
+  {
+    return true;
+  }
+  if(uxQueueMessagesWaiting(xQueueSetBool) != 0){
+    Serial.println("xQueueReceive error setBool");
+    return false;
+  }
+  return false;//not received
 }
 
 void setup(void)
@@ -175,16 +187,12 @@ void setup(void)
   center_button.pushRotateZoom(0, zoom, zoom, transpalette);
   canvas.pushSprite(0, 0);
 
-  switches.setFirebasePath(STUDIO_LIGHT, childPath[0]);
+  switches.setFirebasePath(CRAFTROOM_LIGHT, childPath[0]);
   switches.setFirebasePath(PRINTER_3D, childPath[1]);
 
-  //setupWiFi();
-  //setupFirebase();
-
-  xTaskCreatePinnedToCore(firebaseControl, "FirebaseControl", 4096*2, NULL, 1, &th[0], 1);
+  setupQueue();
+  setupTask();
 }
-
-unsigned long sendDataPrevMillis = 0;
 
 void firebaseControl(void *pvParameters)
 {
@@ -192,24 +200,19 @@ void firebaseControl(void *pvParameters)
   setupFirebase();
 
   while(1){
-    if (Firebase.ready() && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)){
-      sendDataPrevMillis = millis();
-
-      static bool flag = false;
-
-      //Firebase.setBool(switches.getFirebasePathCurrentSwitch().c_str(), is_switched_on);
-      Serial.printf("Free internal heap before TLS %u\n", ESP.getFreeHeap());
-      //bool ret = Firebase.setBool(fbdo2, parentPath + switches.getFirebasePathCurrentSwitch() + "/power", is_switched_on);
-      bool ret = Firebase.setBool(fbdo1, parentPath + switches.getFirebasePathCurrentSwitch() + "/power", flag);
-      flag = !flag;
-      if(!ret){
-        Serial.printf("setBool error %s\n", fbdo2.errorReason().c_str());
+    if (Firebase.ready()){
+      DATA_SET_BOOL recv_data;
+      if(receiveQueueSetBool(recv_data)){
+        Serial.printf("Free internal heap before TLS %u\n", ESP.getFreeHeap());
+        bool ret = Firebase.setBool(fbdo2, parentPath + switches.getFirebasePath(recv_data.switch_number) + "/power", recv_data.power);
+        if(!ret){
+          Serial.printf("setBool error %s\n", fbdo2.errorReason().c_str());
+        }
       }
     }
 
     if (Firebase.ready())
     {
-
       if (!Firebase.readStream(fbdo1))
       {
         Serial.println("------------------------------------");
@@ -466,6 +469,7 @@ void keepTouchCenterButton(void)
     bool is_switched_on = switches.toggleSwitch();
 
     //sync firebase rtdb
+    sendQueueSetBool(switches.getCurrentSwitchNumber(), is_switched_on);
 
     is_in_transition_center_state = false;
     invalid_time = cur_time + INVALID_DURATION;
