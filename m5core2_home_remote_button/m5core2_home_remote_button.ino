@@ -5,7 +5,7 @@
 #include "ui_draw.h"
 #include "switches.h"
 #include "config.h"
-#include "addons/RTDBHelper.h"
+#include "addons/TokenHelper.h"
 
 static LGFX lcd;
 static LGFX_Sprite canvas(&lcd);
@@ -25,6 +25,8 @@ UIDraw uidraw;
 Switches switches;
 
 FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
 
 //XQueueSend/Receive
 struct DATA_SET_BOOL
@@ -70,7 +72,13 @@ void setupWiFi()
 
 void setupFirebase(void)
 {
-  Firebase.begin(FIREBASE_DATABASE_URL, FIREBASE_AUTH);
+  config.api_key = API_KEY;
+  auth.user.email = USER_EMAIL;
+  auth.user.password = USER_PASSWORD;
+  config.database_url = DATABASE_URL;
+  config.token_status_callback = tokenStatusCallback; //see addons/TokenHelper.h
+
+  Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
 
   //Set the size of HTTP response buffers in the case where we want to work with large data.
