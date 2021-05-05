@@ -183,7 +183,7 @@ void UIDraw::drawCenter(ButtonStatus &status, uint32_t decision_time, String cur
         if(status.is_switched_on){
             drawCenterTransitionOn2Off(status.keep_push_time, decision_time);
         }else{
-        drawCenterTransitionOff2On(status.keep_push_time, decision_time);
+            drawCenterTransitionOff2On(status.keep_push_time, decision_time);
         }
     }else{
         if(status.is_switched_on){

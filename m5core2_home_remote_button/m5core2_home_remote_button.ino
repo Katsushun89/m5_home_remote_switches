@@ -286,16 +286,15 @@ void tryDrawCenter(void)
 {
   ButtonStatus status;
   if(uidraw.popEvent(status)){
-    Serial.println("tryDrawCenter");
     uidraw.drawCenter(status, getDecisionTime(), switches.getStrCurrentSwitch());
   }
 }
 
 void updateDrawingCenter(void)
 {
-  Serial.println("updateDrawingCenter");
   ButtonStatus status;
   status.is_switched_on = switches.isSwitchedOnCurrentSwitch();
+  status.is_in_transition = false;
   uidraw.drawCenter(status, getDecisionTime(), switches.getStrCurrentSwitch());
 }
 
