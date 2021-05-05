@@ -1,2 +1,3 @@
-# m5core2_iot_button
-IOT button of M5Core2
+# home_remote_switches
+
+[m5core2_home_remote_button](./m5core2_home_remote_button/README.md)
