@@ -1,35 +1,32 @@
 #include "switches.h"
 
-Switches::Switches()
+Switches::Switches(String switch_names[], size_t switch_num)
 {
     SwitchStatus status;
     status.is_switched_on = false;
 
-    //initialize
-    status.str = "CRAFTROOM";
-    switch_status[CRAFTROOM_LIGHT] = status;
+    for(int i = 0; i < switch_num; i++){
+        status.str = switch_names[i];
+        switch_status[i] = status;
+        setFirebasePath(i, "/" + switch_names[i]);
+    }
 
-    status.str = "3D PRINTER";
-    switch_status[PRINTER_3D] = status;
-
-    cur_switch = CRAFTROOM_LIGHT;
-
+    cur_switch = 0;
 }
 
 void Switches::updatePowerStatus(String path, bool power)
 {
-    for(int32_t i = 0; i < SWITCH_TAIL; i++){
-        if(path.startsWith(switch_status[i].firebase_path)){
-            switch_status[i].is_switched_on = power;
+	for(auto status:switch_status){
+        if(path.startsWith(status.second.firebase_path)){
+            status.second.is_switched_on = power;
         }
-    }
+	}
 }
 
 void Switches::updatePowerStatus(int32_t switch_number, bool power)
 {
     switch_status[switch_number].is_switched_on = power;
 }
-
 
 int32_t Switches::getCurrentSwitchNumber(void)
 {
@@ -85,14 +82,14 @@ void Switches::movedown(void)
 {
     cur_switch--;
     if(cur_switch < 0){
-        cur_switch = SWITCH_TAIL - 1;
+        cur_switch = switch_status.size() - 1;
     }
 }
 
 void Switches::moveup(void)
 {
     cur_switch++;
-    if(cur_switch >= SWITCH_TAIL){
+    if(cur_switch >= switch_status.size()){
         cur_switch = 0;
     }
 }

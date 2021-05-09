@@ -1,4 +1,4 @@
-#include <LovyanGFX.hpp>
+//#include <LovyanGFX.hpp>
 #include "ui_draw.h"
 
 UIDraw::UIDraw()

@@ -2,9 +2,9 @@
 #include <LovyanGFX.hpp>
 #include <WiFi.h>
 #include <FirebaseESP32.h>
-#include "ui_draw.h"
 #include "switches.h"
 #include "config.h"
+#include "ui_draw.h"
 #include "addons/TokenHelper.h"
 
 const uint32_t CENTER_ON_TIME = 1200;
@@ -17,8 +17,10 @@ uint32_t start_time_push_center = 0;
 uint32_t keep_time_push_center = 0;
 uint32_t invalid_time = 0;
 
+const uint32_t SWITCH_NUM = sizeof(SWITCH_DEF)/sizeof(String);
+
+Switches switches(SWITCH_DEF, SWITCH_NUM);
 UIDraw uidraw;
-Switches switches;
 
 FirebaseData fbdo;
 FirebaseAuth auth;
@@ -34,15 +36,12 @@ struct DATA_SET_BOOL
 QueueHandle_t xQueueSetBool;
 QueueHandle_t xQueueStream;
 
-#define CHILD_NUM (2)
 String parentPath = "/switches";
-String childPath[CHILD_NUM] = {"/CRAFTROOM","/3D PRINTER"};
-size_t childPathSize = CHILD_NUM;
 
 struct DATA_STREAM
 {
-  bool switch_updated[CHILD_NUM];
-  bool switch_power[CHILD_NUM];
+  bool switch_updated[SWITCH_NUM];
+  bool switch_power[SWITCH_NUM];
 };
 
 TaskHandle_t th[4];
@@ -165,9 +164,6 @@ void setup(void)
   
   uidraw.setup();
 
-  switches.setFirebasePath(CRAFTROOM_LIGHT, childPath[0]);
-  switches.setFirebasePath(PRINTER_3D, childPath[1]);
-
   setupQueue();
   setupTask();
 
@@ -179,19 +175,19 @@ void setup(void)
 void readStreamBool(void)
 {
   DATA_STREAM send_data;
-  for(int i = 0; i < CHILD_NUM; i++){
+  for(int i = 0; i < SWITCH_NUM; i++){
     send_data.switch_updated[i] = false;
   }
 
-  for(int j = 0; j < CHILD_NUM; j++){
-    if(fbdo.dataPath().indexOf(childPath[j]) >= 0){
+  for(int j = 0; j < SWITCH_NUM; j++){
+    if(fbdo.dataPath().indexOf(switches.getFirebasePath(j)) >= 0){
       bool result_power = false;
       if(fbdo.boolData() == 1){
         result_power = true;
       }
       send_data.switch_power[j] = result_power;
       send_data.switch_updated[j] = true;
-      Serial.printf("%s power:%d\n", childPath[j].c_str(), result_power);
+      Serial.printf("%s power:%d\n", switches.getFirebasePath(j).c_str(), result_power);
       break;
     }
   }
@@ -201,7 +197,7 @@ void readStreamBool(void)
 void readStreamJson(void)
 {
   DATA_STREAM send_data;
-  for(int i = 0; i < CHILD_NUM; i++){
+  for(int i = 0; i < SWITCH_NUM; i++){
     send_data.switch_updated[i] = false;
   }
   FirebaseJson &json = fbdo.jsonObject();
@@ -211,15 +207,15 @@ void readStreamJson(void)
   for (size_t i = 0; i < len; i++)
   {
     json.iteratorGet(i, type, key, value);
-    for(int j = 0; j < CHILD_NUM; j++){
-      if(childPath[j].endsWith(key) && value.indexOf("power") >= 0){
+    for(int j = 0; j < SWITCH_NUM; j++){
+      if(switches.getFirebasePath(j).endsWith(key) && value.indexOf("power") >= 0){
         bool result_power = false;
         if(value.indexOf("true") >= 0){
           result_power = true;
         }
         send_data.switch_power[j] = result_power;
         send_data.switch_updated[j] = true;
-        Serial.printf("%s power:%d\n", childPath[j].c_str(), result_power);
+        Serial.printf("%s power:%d\n", switches.getFirebasePath(j).c_str(), result_power);
         break;
       }
     }
@@ -452,7 +448,7 @@ void updateStreamSwitchStatus(void)
 {
   DATA_STREAM recv_data;
   if(receiveQueueStream(recv_data)){
-    for(int32_t i = 0; i < SWITCH_TAIL; i++){
+    for(int32_t i = 0; i < SWITCH_NUM; i++){
       if(recv_data.switch_updated[i]){
         switches.updatePowerStatus(i, recv_data.switch_power[i]);
       }

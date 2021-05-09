@@ -1,13 +1,7 @@
 #pragma once
-#include <unordered_map>
-//#include <string>
-#include <Arduino.h>
 
-enum SwitchName{
-    CRAFTROOM_LIGHT = 0,
-    PRINTER_3D,
-    SWITCH_TAIL,//threshold
-};
+#include <unordered_map>
+#include <Arduino.h>
 
 struct SwitchStatus{
     String str;
@@ -22,7 +16,7 @@ private:
     int32_t cur_switch;
 
 public:
-    Switches();
+    Switches(String switch_names[], size_t switch_num);
     ~Switches() = default;
     void setup(void);
     int32_t getCurrentSwitchNumber(void);
