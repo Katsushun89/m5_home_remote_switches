@@ -24,6 +24,8 @@ const uint32_t SWITCH_NUM = sizeof(SWITCH_DEF) / sizeof(String);
 Switches switches(SWITCH_DEF, SWITCH_NUM);
 UIDraw uidraw;
 
+/////////////////////////////////////////////////////////////////
+// task and firebase
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
@@ -152,19 +154,6 @@ bool receiveQueueStream(DATA_STREAM &recv_data) {
     return false;  // not received
 }
 
-void setup(void) {
-    Serial.begin(115200);
-
-    uidraw.setup();
-
-    setupQueue();
-    setupTask();
-
-    sleep(1);  // wait 1sec
-    updateDrawingCenter();
-    sleep(1);  // wait 1sec
-}
-
 void readStreamBool(void) {
     DATA_STREAM send_data;
     for (int i = 0; i < SWITCH_NUM; i++) {
@@ -265,6 +254,21 @@ void firebaseControl(void *pvParameters) {
         syncStream();
         vTaskDelay(10);
     }
+}
+// task and firebase
+/////////////////////////////////////////////////////////////////
+
+void setup(void) {
+    Serial.begin(115200);
+
+    uidraw.setup();
+
+    setupQueue();
+    setupTask();
+
+    sleep(1);  // wait 1sec
+    updateDrawingCenter();
+    sleep(1);  // wait 1sec
 }
 
 void tryDrawCenter(void) {
