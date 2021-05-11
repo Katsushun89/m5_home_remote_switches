@@ -12,6 +12,22 @@ const uint32_t SWITCH_NUM = sizeof(SWITCH_DEF) / sizeof(String);
 
 Switches switches(SWITCH_DEF, SWITCH_NUM);
 
+// Port 32 for IR Remote Unit
+const uint16_t kIrLed = 26;
+IRsend irsend(kIrLed);
+
+enum {
+    REMOTE_OFF = 0,
+    REMOTE_ON,
+};
+
+const uint64_t remote_cmd[] = {
+    0xE730D12EUL,  // OFF
+    0xE730E916UL,  // ON
+};
+
+/////////////////////////////////////////////////////////////////
+// task and firebase
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
@@ -33,20 +49,6 @@ struct DATA_STREAM {
 };
 
 TaskHandle_t th[4];
-
-// Port 32 for IR Remote Unit
-const uint16_t kIrLed = 26;
-IRsend irsend(kIrLed);
-
-enum {
-    REMOTE_OFF = 0,
-    REMOTE_ON,
-};
-
-const uint64_t remote_cmd[] = {
-    0xE730D12EUL,  // OFF
-    0xE730E916UL,  // ON
-};
 
 void setupWiFi() {
     WiFi.begin(SSID, PASSWD);
@@ -156,21 +158,6 @@ bool receiveQueueStream(DATA_STREAM &recv_data) {
     return false;  // not received
 }
 
-void setupIRRemote(void) { irsend.begin(); }
-
-void setup() {
-    M5.begin(true, false, true);
-
-    Serial.begin(115200);
-
-    setupIRRemote();
-
-    setupQueue();
-    setupTask();
-
-    M5.dis.drawpix(0, 0x0000f0);
-}
-
 void readStreamBool(void) {
     DATA_STREAM send_data;
     for (int i = 0; i < SWITCH_NUM; i++) {
@@ -272,6 +259,23 @@ void firebaseControl(void *pvParameters) {
         vTaskDelay(10);
     }
 }
+// task and firebase
+/////////////////////////////////////////////////////////////////
+
+void setupIRRemote(void) { irsend.begin(); }
+
+void setup() {
+    M5.begin(true, false, true);
+
+    Serial.begin(115200);
+
+    setupIRRemote();
+
+    setupQueue();
+    setupTask();
+
+    M5.dis.drawpix(0, 0x0000f0);
+}
 
 void switchON(void) {
     Serial.println("ON");
@@ -284,20 +288,6 @@ void switchOFF(void) {
     irsend.sendNEC(remote_cmd[REMOTE_OFF]);
     M5.dis.drawpix(0, 0x00f000);
 }
-
-/*
-void printStatus() {
-    switch (sw_state) {
-        case SW_ON:
-            break;
-        case SW_OFF:
-            break;
-        case SW_NOT_SET:
-        default:
-            M5.dis.drawpix(0, 0x0000f0);
-            break;
-    }
-}*/
 
 void checkButton() {
     if (M5.Btn.wasPressed()) {
