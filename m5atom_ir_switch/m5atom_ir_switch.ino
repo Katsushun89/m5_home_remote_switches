@@ -67,6 +67,7 @@ void setupWiFi() {
 }
 
 void setupFirebase(void) {
+    Serial.println("setupFirebase");
     config.api_key = API_KEY;
     auth.user.email = USER_EMAIL;
     auth.user.password = USER_PASSWORD;
@@ -87,6 +88,7 @@ void setupFirebase(void) {
         Serial.println("Can't begin stream connection...");
         Serial.println("REASON: " + fbdo.errorReason());
     }
+    Serial.println("setupFirebase end");
 }
 
 void setupQueue(void) {
