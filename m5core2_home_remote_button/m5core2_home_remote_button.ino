@@ -5,7 +5,8 @@
 #include <LovyanGFX.hpp>
 
 #include "addons/TokenHelper.h"
-#include "config.h"
+#include "config_network.h"
+#include "config_switch.h"
 #include "switches.h"
 #include "ui_draw.h"
 
