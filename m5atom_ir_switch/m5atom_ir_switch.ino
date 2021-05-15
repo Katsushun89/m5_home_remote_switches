@@ -5,25 +5,20 @@
 #include <WiFi.h>
 
 #include "addons/TokenHelper.h"
-#include "config.h"
+#include "config_network.h"
+#include "config_switch.h"
 #include "switches.h"
 
 const uint32_t SWITCH_NUM = sizeof(SWITCH_DEF) / sizeof(String);
 
 Switches switches(SWITCH_DEF, SWITCH_NUM);
 
-// Port 32 for IR Remote Unit
-const uint16_t kIrLed = 26;
-IRsend irsend(kIrLed);
+// IR
+IRsend irsend(PORT_IR);
 
 enum {
     REMOTE_OFF = 0,
     REMOTE_ON,
-};
-
-const uint64_t remote_cmd[] = {
-    0xE730D12EUL,  // OFF
-    0xE730E916UL,  // ON
 };
 
 /////////////////////////////////////////////////////////////////
@@ -279,13 +274,13 @@ void setup() {
 
 void switchON(void) {
     Serial.println("ON");
-    irsend.sendNEC(remote_cmd[REMOTE_ON]);
+    irsend.sendNEC(ir_remote_cmd[REMOTE_ON]);
     M5.dis.drawpix(0, 0xf00000);
 }
 
 void switchOFF(void) {
     Serial.println("OFF");
-    irsend.sendNEC(remote_cmd[REMOTE_OFF]);
+    irsend.sendNEC(ir_remote_cmd[REMOTE_OFF]);
     M5.dis.drawpix(0, 0x00f000);
 }
 
