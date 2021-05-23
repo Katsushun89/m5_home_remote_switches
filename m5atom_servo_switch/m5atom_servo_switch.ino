@@ -13,7 +13,7 @@ const uint32_t SWITCH_NUM = sizeof(SWITCH_DEF) / sizeof(String);
 Switches switches(SWITCH_DEF, SWITCH_NUM);
 
 // Servo
-Servo servo1;  // create four servo objects
+Servo servo;  // create four servo objects
 int16_t cur_servo_pos = 0;
 int16_t goal_servo_pos = 0;
 
@@ -254,10 +254,10 @@ void firebaseControl(void *pvParameters) {
 /////////////////////////////////////////////////////////////////
 
 void setupServo(void) {
-    servo1.setPeriodHertz(50);  // Standard 50hz servo
-    servo1.attach(PORT_SERVO, MIN_US, MAX_US);
+    servo.setPeriodHertz(50);  // Standard 50hz servo
+    servo.attach(PORT_SERVO, MIN_US, MAX_US);
 
-    cur_servo_pos = servo1.read();
+    cur_servo_pos = servo.read();
     Serial.print("cur_servo_pos:");
     Serial.println(cur_servo_pos);
 }
@@ -323,7 +323,7 @@ void updateStreamSwitchStatus(void) {
 void moveServo() {
     if (goal_servo_pos == cur_servo_pos) return;
 
-    servo1.write(goal_servo_pos);
+    servo.write(goal_servo_pos);
     cur_servo_pos = goal_servo_pos;
 }
 
